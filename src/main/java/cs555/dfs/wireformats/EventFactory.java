@@ -18,9 +18,34 @@ public class EventFactory {
         switch (protocol) {
             case Protocol.REGISTER_REQUEST:
                 return createRegisterRequest(data.length, dataInputStream, socket);
+            case Protocol.STORE_CHUNK_REQUEST:
+                return createStoreRegisterRequest(data.length, dataInputStream);
             default:
                 throw new RuntimeException(String.format("received an unknown event with protocol %d", protocol));
         }
+    }
+
+    private static StoreChunkRequest createStoreRegisterRequest(int dataLength, DataInputStream dataInputStream) throws IOException {
+        /**
+         * Event Type (int): STORE_CHUNK_REQUEST
+         * Filename size (int)
+         * Filename (String)
+         * Chunk index (int)
+         * Chunk size (int)
+         * Chunk data (byte[])
+         */
+        int chunkIdx = dataInputStream.readInt();
+
+        int fileNameLength = dataInputStream.readInt();
+        byte[] fileNameBytes = new byte[fileNameLength];
+        dataInputStream.readFully(fileNameBytes, 0, fileNameLength);
+        String fileName = new String(fileNameBytes);
+
+        int bytesLength = dataInputStream.readInt();
+        byte[] bytes = new byte[bytesLength];
+        dataInputStream.readFully(bytes, 0, bytesLength);
+
+        return new StoreChunkRequest(fileName, chunkIdx, bytes);
     }
 
     private static RegisterRequest createRegisterRequest(int dataLength, DataInputStream dataInputStream, Socket socket) throws IOException {
@@ -33,7 +58,9 @@ public class EventFactory {
         byte[] ipBytes = new byte[ipLength];
         dataInputStream.readFully(ipBytes, 0, ipLength);
         String ip = new String(ipBytes);
+
         int port = dataInputStream.readInt();
+
         return new RegisterRequest(ip, port, socket);
     }
 }

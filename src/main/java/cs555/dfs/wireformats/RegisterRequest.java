@@ -43,7 +43,6 @@ public class RegisterRequest implements Event {
         dataOutputStream.close();
 
         return data;
-
     }
 
     @Override

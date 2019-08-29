@@ -66,7 +66,7 @@ public class FileChunkifier {
 
     public static void main(String[] args) {
         Path path = Paths.get("bogus.bin");
-        byte[] randomBytes = new byte[CHUNK_SIZE * 17322];
+        byte[] randomBytes = new byte[CHUNK_SIZE * 5 + 2];
         new Random().nextBytes(randomBytes);
         try {
             Files.write(path, randomBytes);
