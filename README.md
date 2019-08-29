@@ -20,3 +20,6 @@ Building a distributed, replicated, and fault tolerant file system
 * send chunk to first chunk server -- append next chunk servers
 * read in file from command line
 * reed solomonize chunks
+
+## Notes
+* the client reads the entire file into memory, could improve by streaming file a chunk at a time
