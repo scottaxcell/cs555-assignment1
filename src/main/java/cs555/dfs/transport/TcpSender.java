@@ -8,13 +8,14 @@ public class TcpSender {
     private Socket socket;
     private DataOutputStream dataOutputStream;
 
-    private TcpSender(Socket socket) throws IOException {
+    public TcpSender(Socket socket) {
         this.socket = socket;
-        dataOutputStream = new DataOutputStream(socket.getOutputStream());
-    }
-
-    public static TcpSender of(Socket socket) throws IOException {
-        return new TcpSender(socket);
+        try {
+            dataOutputStream = new DataOutputStream(socket.getOutputStream());
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public synchronized void send(byte[] data) throws IOException {

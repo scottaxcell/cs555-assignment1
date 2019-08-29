@@ -15,11 +15,11 @@ public class TcpConnection {
         this.socket = socket;
         this.node = node;
         try {
-            tcpReceiver = TcpReceiver.of(socket, node);
+            tcpReceiver = new TcpReceiver(socket, node);
             Thread thread = new Thread(tcpReceiver);
             thread.start();
 
-            tcpSender = TcpSender.of(socket);
+            tcpSender = new TcpSender(socket);
         }
         catch (IOException e) {
             e.printStackTrace();

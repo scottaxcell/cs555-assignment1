@@ -14,14 +14,10 @@ public class TcpReceiver implements Runnable {
     private DataInputStream dataInputStream;
     private Node node;
 
-    private TcpReceiver(Socket socket, Node node) throws IOException {
+    public TcpReceiver(Socket socket, Node node) throws IOException {
         this.socket = socket;
         this.node = node;
         dataInputStream = new DataInputStream(socket.getInputStream());
-    }
-
-    public static TcpReceiver of(Socket incomingSocket, Node node) throws IOException {
-        return new TcpReceiver(incomingSocket, node);
     }
 
     public Socket getSocket() {

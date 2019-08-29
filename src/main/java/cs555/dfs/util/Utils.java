@@ -29,4 +29,13 @@ public class Utils {
     public static int generateRandomWeight() {
         return new Random().nextInt(10) + 1;
     }
+
+    public static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 }

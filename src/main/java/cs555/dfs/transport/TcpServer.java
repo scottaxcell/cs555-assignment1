@@ -12,19 +12,15 @@ public class TcpServer implements Runnable {
     private ServerSocket serverSocket;
     private Node node;
 
-    private TcpServer(int port, Node node) {
+    public TcpServer(int port, Node node) {
         this.node = node;
         try {
             serverSocket = new ServerSocket(port);
-            Utils.info(String.format("%s TCP server started on %s:%d", node.getType(), getIp(), getPort()));
+            Utils.info(String.format("%s TCP server started on %s:%d", node.getNodeTypeAsString(), getIp(), getPort()));
         }
         catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static TcpServer of(int port, Node node) {
-        return new TcpServer(port, node);
     }
 
     @Override

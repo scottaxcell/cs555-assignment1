@@ -16,8 +16,24 @@ public class EventFactory {
 
         int protocol = dataInputStream.readInt();
         switch (protocol) {
+            case Protocol.REGISTER_REQUEST:
+                return createRegisterRequest(data.length, dataInputStream, socket);
             default:
                 throw new RuntimeException(String.format("received an unknown event with protocol %d", protocol));
         }
+    }
+
+    private static RegisterRequest createRegisterRequest(int dataLength, DataInputStream dataInputStream, Socket socket) throws IOException {
+        /**
+         * Event Type (int): REGISTER_REQUEST
+         * IP address (String)
+         * Port number (int)
+         */
+        int ipLength = dataLength - SIZE_OF_INT * 2;
+        byte[] ipBytes = new byte[ipLength];
+        dataInputStream.readFully(ipBytes, 0, ipLength);
+        String ip = new String(ipBytes);
+        int port = dataInputStream.readInt();
+        return new RegisterRequest(ip, port, socket);
     }
 }
