@@ -4,8 +4,8 @@ Building a distributed, replicated, and fault tolerant path system
 ## TODO
 ### Miscellaneous
 * can i remove the socket from the events and create constructors that take serialized data
-* create run script to launch controller, chunk servers, and client for easier testing
-* add temp testing command line handling for easier testing
+* ~~create run script to launch controller, chunk servers, and client for easier testing~~
+* ~~add temp testing command line handling for easier testing~~
 
 ### Controller
 * use chunk server free-space to determine applicable nodes
