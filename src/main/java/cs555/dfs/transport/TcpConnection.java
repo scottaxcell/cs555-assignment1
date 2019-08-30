@@ -11,7 +11,7 @@ public class TcpConnection {
     private TcpReceiver tcpReceiver;
     private TcpSender tcpSender;
 
-    private TcpConnection(Socket socket, Node node) {
+    public TcpConnection(Socket socket, Node node) {
         this.socket = socket;
         this.node = node;
         try {
@@ -24,10 +24,6 @@ public class TcpConnection {
         catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static TcpConnection of(Socket socket, Node node) {
-        return new TcpConnection(socket, node);
     }
 
     public Socket getSocket() {

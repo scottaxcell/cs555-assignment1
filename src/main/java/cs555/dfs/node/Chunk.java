@@ -9,12 +9,15 @@ import java.time.Instant;
 import java.util.Objects;
 
 public class Chunk {
+    private final String fileName;
     private final Path path;
     private int version;
     private int sequence;
     private Instant timeStamp;
 
-    public Chunk(Path path) {
+    public Chunk(String fileName, int sequence, Path path) {
+        this.fileName = fileName;
+        this.sequence = sequence;
         this.path = path;
     }
 
@@ -38,7 +41,8 @@ public class Chunk {
     @Override
     public String toString() {
         return "Chunk{" +
-            "path=" + path +
+            "fileName=" + fileName +
+            ", path=" + path +
             ", version=" + version +
             ", sequence=" + sequence +
             ", timeStamp=" + timeStamp +

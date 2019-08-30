@@ -22,15 +22,15 @@ public class FileChunkifier {
         int remainderChunk = (int) (file.length() % CHUNK_SIZE);
         Utils.debug("remainderChunk: " + remainderChunk);
 
-        int chunkIdx = 0;
-        for (; chunkIdx < numChunks; chunkIdx++) {
+        int chunkSequence = 0;
+        for (; chunkSequence < numChunks; chunkSequence++) {
             byte[] b = new byte[CHUNK_SIZE];
-            System.arraycopy(fileAsBytes, chunkIdx * CHUNK_SIZE, b, 0, CHUNK_SIZE);
+            System.arraycopy(fileAsBytes, chunkSequence * CHUNK_SIZE, b, 0, CHUNK_SIZE);
             bytes.add(b);
         }
         if (remainderChunk > 0) {
             byte[] b = new byte[remainderChunk];
-            System.arraycopy(fileAsBytes, chunkIdx * CHUNK_SIZE, b, 0, remainderChunk);
+            System.arraycopy(fileAsBytes, chunkSequence * CHUNK_SIZE, b, 0, remainderChunk);
             bytes.add(b);
         }
 
@@ -56,10 +56,10 @@ public class FileChunkifier {
         for (byte[] b : byteArrayList)
             numBytes += b.length;
         byte[] bytes = new byte[numBytes];
-        int chunkIdx = 0;
+        int chunkSequence = 0;
         for (byte[] b : byteArrayList) {
-            System.arraycopy(b, 0, bytes, chunkIdx * CHUNK_SIZE, b.length);
-            chunkIdx++;
+            System.arraycopy(b, 0, bytes, chunkSequence * CHUNK_SIZE, b.length);
+            chunkSequence++;
         }
         return bytes;
     }

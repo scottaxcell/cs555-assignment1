@@ -31,13 +31,13 @@ public class ChunkServer implements Node {
         new Thread(tcpServer).start();
         Utils.sleep(500);
 
-//        registerWithController(controllerIp, controllerPort);
+        registerWithController(controllerIp, controllerPort);
     }
 
     private void registerWithController(String controllerIp, int controllerPort) {
         try {
             Socket socket = new Socket(controllerIp, controllerPort);
-            controllerTcpConnection = TcpConnection.of(socket, this);
+            controllerTcpConnection = new TcpConnection(socket, this);
             RegisterRequest request = new RegisterRequest(tcpServer.getIp(), tcpServer.getPort(), controllerTcpConnection.getSocket());
             controllerTcpConnection.send(request.getBytes());
         }
@@ -64,9 +64,10 @@ public class ChunkServer implements Node {
 
         // todo -- write chunk
         String fileName = request.getFileName();
-        Path path = generateWritePath(fileName, request.getChunkIdx());
+        int sequence = request.getChunkSequence();
+        Path path = generateWritePath(fileName, sequence);
 
-        Chunk chunk = new Chunk(path);
+        Chunk chunk = new Chunk(fileName, sequence, path);
         filesToChunks.computeIfAbsent(fileName, fn -> new ArrayList<>());
         List<Chunk> chunks = filesToChunks.get(fileName);
         if (!chunks.contains(chunk))
@@ -80,15 +81,15 @@ public class ChunkServer implements Node {
         // todo -- forward chunk to next servers
     }
 
-    private Path generateWritePath(String fileName, int chunkIdx) {
-        Path path = Paths.get(tmpDir, fileName + "_chunk" + chunkIdx);
+    private Path generateWritePath(String fileName, int chunkSequence) {
+        Path path = Paths.get(tmpDir, fileName + "_chunk" + chunkSequence);
         return path;
     }
 
     public long getUsableSpace() {
         return new File(tmpDir).getUsableSpace();
     }
-    
+
     @Override
     public String getNodeTypeAsString() {
         return "ChunkServer";

@@ -15,6 +15,25 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
+/**
+ * USE CASES
+ * =========
+ *
+ * store file on dfs:
+ * - chunkify file
+ * - ask controller for 3 servers
+ * - send chunk to first server
+ * - wait for response before asking controller for next set of servers for the next chunk
+ * - repeat for each chunk
+ *
+ * read file from dfs:
+ * - ask controller for servers
+ * - ask each server for all available chunks
+ * - sort chunks according to sequence number
+ * - write chunks to file on disk -- user will specify location
+ *
+ *
+ */
 public class Client implements Node {
     private final TcpServer tcpServer;
     private TcpConnection controllerTcpConnection;
@@ -89,23 +108,24 @@ public class Client implements Node {
             e.printStackTrace();
             System.exit(-1);
         }
-        TcpConnection chunkServerTcpConnection = TcpConnection.of(socket, this);
+        TcpConnection chunkServerTcpConnection = new TcpConnection(socket, this);
 
         List<byte[]> bytes = FileChunkifier.chunkifyFile(path.toFile());
-        int chunkIdx = 0;
+        int chunkSequence = 0;
         for (byte[] chunkData : bytes) {
-            StoreChunkRequest request = new StoreChunkRequest(path.toAbsolutePath().toString(), chunkIdx, chunkData);
+            StoreChunkRequest request = new StoreChunkRequest(path.toAbsolutePath().toString(), chunkSequence, chunkData);
             try {
                 chunkServerTcpConnection.send(request.getBytes());
             }
             catch (IOException e) {
                 e.printStackTrace();
             }
-            chunkIdx++;
+            chunkSequence++;
         }
         // todo -- chunkify file, then for each chunk do the following
         // todo -- ask controller for chunk servers
         // todo -- send chunk plus next servers to first server
+        // todo -- wait for response that chunk has been written from first server before next controller request
     }
 
     public static void main(String[] args) {

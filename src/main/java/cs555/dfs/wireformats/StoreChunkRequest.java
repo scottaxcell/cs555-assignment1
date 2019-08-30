@@ -7,13 +7,13 @@ import java.io.IOException;
 
 public class StoreChunkRequest implements Event {
     private final String fileName;
-    private final int chunkIdx;
+    private final int chunkSequence;
     private final byte[] data;
     // todo -- add support for additional chunk servers
 
-    public StoreChunkRequest(String fileName, int chunkIdx, byte[] data) {
+    public StoreChunkRequest(String fileName, int chunkSequence, byte[] data) {
         this.fileName = fileName;
-        this.chunkIdx = chunkIdx;
+        this.chunkSequence = chunkSequence;
         this.data = data;
     }
 
@@ -36,7 +36,7 @@ public class StoreChunkRequest implements Event {
         DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
         dataOutputStream.writeInt(getProtocol());
-        dataOutputStream.writeInt(chunkIdx);
+        dataOutputStream.writeInt(chunkSequence);
         dataOutputStream.writeInt(fileName.length());
         dataOutputStream.write(fileName.getBytes());
         dataOutputStream.writeInt(data.length);
@@ -55,7 +55,7 @@ public class StoreChunkRequest implements Event {
     public String toString() {
         return "StoreChunkRequest{" +
             "fileName='" + fileName + '\'' +
-            ", chunkIdx=" + chunkIdx +
+            ", chunkSequence=" + chunkSequence +
             ", data.length=" + data.length +
             '}';
     }
@@ -64,8 +64,8 @@ public class StoreChunkRequest implements Event {
         return fileName;
     }
 
-    public int getChunkIdx() {
-        return chunkIdx;
+    public int getChunkSequence() {
+        return chunkSequence;
     }
 
     public byte[] getData() {

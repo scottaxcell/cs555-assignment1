@@ -34,7 +34,7 @@ public class EventFactory {
          * Chunk size (int)
          * Chunk data (byte[])
          */
-        int chunkIdx = dataInputStream.readInt();
+        int chunkSequence = dataInputStream.readInt();
 
         int fileNameLength = dataInputStream.readInt();
         byte[] fileNameBytes = new byte[fileNameLength];
@@ -45,7 +45,7 @@ public class EventFactory {
         byte[] bytes = new byte[bytesLength];
         dataInputStream.readFully(bytes, 0, bytesLength);
 
-        return new StoreChunkRequest(fileName, chunkIdx, bytes);
+        return new StoreChunkRequest(fileName, chunkSequence, bytes);
     }
 
     private static RegisterRequest createRegisterRequest(int dataLength, DataInputStream dataInputStream, Socket socket) throws IOException {
