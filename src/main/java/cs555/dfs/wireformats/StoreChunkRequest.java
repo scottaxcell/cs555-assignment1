@@ -9,6 +9,7 @@ public class StoreChunkRequest implements Event {
     private final String fileName;
     private final int chunkIdx;
     private final byte[] data;
+    // todo -- add support for additional chunk servers
 
     public StoreChunkRequest(String fileName, int chunkIdx, byte[] data) {
         this.fileName = fileName;

@@ -56,8 +56,10 @@ public class Client implements Node {
 
             input = scanner.next();
             if (input.startsWith("sf")) {
-                Utils.out("fileName: \n");
-                String fileName = scanner.next();
+                // todo -- turn on ask for file
+//                Utils.out("fileName: \n");
+//                String fileName = scanner.next();
+                String fileName = "./bogus.bin";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.out("file does not exist: " + path + "\n");

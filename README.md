@@ -18,13 +18,15 @@ Building a distributed, replicated, and fault tolerant path system
 * major heartbeat -- metadata about all the chunks
 * all heartbeats -- total number of chunks and free-space
 * report path corruption to controller
+* add error detection by hashing on reads and writes
 
 ### Client
 * ask controller for chunk servers to write chunk to
-* chunkify path
+* ~~chunkify path~~
 * send chunk to first chunk server -- append next chunk servers
-* read in path from command line
+* ~~read in path from command line~~
 * reed solomonize chunks
 
 ## Notes
 * the client reads the entire path into memory, could improve by streaming path a chunk at a time
+* chunk server does not recover after shutdown, starts a clean slate
