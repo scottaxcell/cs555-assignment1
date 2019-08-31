@@ -1,17 +1,31 @@
 package cs555.dfs.wireformats;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import cs555.dfs.transport.TcpConnection;
 
-public class MinorHeartbeat implements Event {
-    private final long usableSpace;
-    private final int numChunks;
+import java.io.*;
 
-    public MinorHeartbeat(long usableSpace, int numChunks) {
+public class MinorHeartbeat implements Message {
+    private MessageHeader messageHeader;
+    private long usableSpace;
+    private int numChunks;
+
+    public MinorHeartbeat(TcpConnection tcpConnection, long usableSpace, int numChunks) {
+        this.messageHeader = new MessageHeader(getProtocol(), tcpConnection);
         this.usableSpace = usableSpace;
         this.numChunks = numChunks;
+    }
+
+    public MinorHeartbeat(byte[] bytes) throws IOException {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+        DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+        this.messageHeader = MessageHeader.deserialize(dataInputStream);
+
+        usableSpace = dataInputStream.readLong();
+        numChunks = dataInputStream.readInt();
+
+        byteArrayInputStream.close();
+        dataInputStream.close();
     }
 
     @Override
@@ -21,17 +35,15 @@ public class MinorHeartbeat implements Event {
 
     @Override
     public byte[] getBytes() throws IOException {
-        /**
-         * Event Type (int): MINOR_HEARTBEAT
-         * Usable space (long)
-         * Number of chunks (int)
-         */
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.writeInt(getProtocol());
+        dataOutputStream.write(messageHeader.getBytes());
+
         dataOutputStream.writeLong(usableSpace);
+
         dataOutputStream.writeInt(numChunks);
+
         dataOutputStream.flush();
 
         byte[] data = byteArrayOutputStream.toByteArray();
@@ -45,7 +57,8 @@ public class MinorHeartbeat implements Event {
     @Override
     public String toString() {
         return "MinorHeartbeat{" +
-            "usableSpace=" + usableSpace +
+            "messageHeader=" + messageHeader +
+            ", usableSpace=" + usableSpace +
             ", numChunks=" + numChunks +
             '}';
     }

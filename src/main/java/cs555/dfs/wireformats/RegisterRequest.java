@@ -1,20 +1,24 @@
 package cs555.dfs.wireformats;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.Socket;
+import cs555.dfs.transport.TcpConnection;
 
-public class RegisterRequest implements Event {
-    private String ip;
-    private int port;
-    private Socket socket;
+import java.io.*;
 
-    public RegisterRequest(String ip, int port, Socket socket) {
-        this.ip = ip;
-        this.port = port;
-        this.socket = socket;
+public class RegisterRequest implements Message {
+    private MessageHeader messageHeader;
+
+    public RegisterRequest(TcpConnection tcpConnection) {
+        this.messageHeader = new MessageHeader(getProtocol(), tcpConnection);
+    }
+
+    public RegisterRequest(byte[] bytes) throws IOException {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+        DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+        this.messageHeader = MessageHeader.deserialize(dataInputStream);
+
+        byteArrayInputStream.close();
+        dataInputStream.close();
     }
 
     @Override
@@ -24,17 +28,10 @@ public class RegisterRequest implements Event {
 
     @Override
     public byte[] getBytes() throws IOException {
-        /**
-         * Event Type (int): REGISTER_REQUEST
-         * IP address (String)
-         * Port number (int)
-         */
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.writeInt(getProtocol());
-        dataOutputStream.write(ip.getBytes());
-        dataOutputStream.writeInt(port);
+        dataOutputStream.write(messageHeader.getBytes());
         dataOutputStream.flush();
 
         byte[] data = byteArrayOutputStream.toByteArray();
@@ -48,21 +45,7 @@ public class RegisterRequest implements Event {
     @Override
     public String toString() {
         return "RegisterRequest{" +
-            "ip='" + ip + '\'' +
-            ", port=" + port +
-            ", socket=" + socket +
+            "messageHeader=" + messageHeader +
             '}';
-    }
-
-    public Socket getSocket() {
-        return socket;
-    }
-
-    public String getIp() {
-        return ip;
-    }
-
-    public int getPort() {
-        return port;
     }
 }

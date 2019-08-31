@@ -1,8 +1,8 @@
 package cs555.dfs.transport;
 
 import cs555.dfs.node.Node;
-import cs555.dfs.wireformats.Event;
-import cs555.dfs.wireformats.EventFactory;
+import cs555.dfs.wireformats.Message;
+import cs555.dfs.wireformats.MessageFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -31,8 +31,8 @@ public class TcpReceiver implements Runnable {
                 int dataLength = dataInputStream.readInt();
                 byte[] data = new byte[dataLength];
                 dataInputStream.readFully(data, 0, dataLength);
-                Event event = EventFactory.getMessageFromData(data, socket);
-                node.onEvent(event);
+                Message message = MessageFactory.getMessageFromData(data);
+                node.onMessage(message);
             }
             catch (SocketException e) {
                 e.printStackTrace();

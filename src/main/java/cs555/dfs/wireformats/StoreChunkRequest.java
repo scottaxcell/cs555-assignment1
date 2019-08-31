@@ -1,20 +1,42 @@
 package cs555.dfs.wireformats;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import cs555.dfs.transport.TcpConnection;
 
-public class StoreChunkRequest implements Event {
-    private final String fileName;
-    private final int chunkSequence;
-    private final byte[] data;
+import java.io.*;
+
+public class StoreChunkRequest implements Message {
+    private MessageHeader messageHeader;
+    private String fileName;
+    private int chunkSequence;
+    private byte[] fileData;
     // todo -- add support for additional chunk servers
 
-    public StoreChunkRequest(String fileName, int chunkSequence, byte[] data) {
+    public StoreChunkRequest(TcpConnection tcpConnection, String fileName, int chunkSequence, byte[] fileData) {
+        this.messageHeader = new MessageHeader(getProtocol(), tcpConnection);
         this.fileName = fileName;
         this.chunkSequence = chunkSequence;
-        this.data = data;
+        this.fileData = fileData;
+    }
+
+    public StoreChunkRequest(byte[] bytes) throws IOException {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+        DataInputStream fileDataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+        this.messageHeader = MessageHeader.deserialize(fileDataInputStream);
+
+        chunkSequence = fileDataInputStream.readInt();
+
+        int fileNameLength = fileDataInputStream.readInt();
+        byte[] fileNameBytes = new byte[fileNameLength];
+        fileDataInputStream.readFully(fileNameBytes, 0, fileNameLength);
+        fileName = new String(fileNameBytes);
+
+        int bytesLength = fileDataInputStream.readInt();
+        fileData = new byte[bytesLength];
+        fileDataInputStream.readFully(fileData, 0, bytesLength);
+
+        byteArrayInputStream.close();
+        fileDataInputStream.close();
     }
 
     @Override
@@ -24,23 +46,19 @@ public class StoreChunkRequest implements Event {
 
     @Override
     public byte[] getBytes() throws IOException {
-        /**
-         * Event Type (int): STORE_CHUNK_REQUEST
-         * Filename size (int)
-         * Filename (String)
-         * Chunk index (int)
-         * Chunk size (int)
-         * Chunk data (byte[])
-         */
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.writeInt(getProtocol());
+        dataOutputStream.write(messageHeader.getBytes());
+
         dataOutputStream.writeInt(chunkSequence);
+
         dataOutputStream.writeInt(fileName.length());
         dataOutputStream.write(fileName.getBytes());
-        dataOutputStream.writeInt(data.length);
-        dataOutputStream.write(data);
+
+        dataOutputStream.writeInt(fileData.length);
+        dataOutputStream.write(fileData);
+
         dataOutputStream.flush();
 
         byte[] data = byteArrayOutputStream.toByteArray();
@@ -54,9 +72,10 @@ public class StoreChunkRequest implements Event {
     @Override
     public String toString() {
         return "StoreChunkRequest{" +
-            "fileName='" + fileName + '\'' +
+            "messageHeader=" + messageHeader +
+            ", fileName='" + fileName + '\'' +
             ", chunkSequence=" + chunkSequence +
-            ", data.length=" + data.length +
+            ", fileData.length=" + fileData.length +
             '}';
     }
 
@@ -68,7 +87,7 @@ public class StoreChunkRequest implements Event {
         return chunkSequence;
     }
 
-    public byte[] getData() {
-        return data;
+    public byte[] getFileData() {
+        return fileData;
     }
 }

@@ -1,17 +1,17 @@
 package cs555.dfs.node.controller;
 
 import cs555.dfs.node.Node;
-import cs555.dfs.transport.TcpSender;
+import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
-import cs555.dfs.wireformats.Event;
+import cs555.dfs.wireformats.Message;
 import cs555.dfs.wireformats.MinorHeartbeat;
 import cs555.dfs.wireformats.Protocol;
 import cs555.dfs.wireformats.RegisterRequest;
 
-import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * USE CASES
@@ -24,7 +24,7 @@ import java.util.Map;
  * - send list of servers to client
  * <p>
  * track live chunk servers
- * - register server on event from server
+ * - register server on message from server
  * - update chunk data when a heartbeat comes in
  * - de-register server when it goes down
  * <p>
@@ -39,6 +39,7 @@ import java.util.Map;
  */
 public class Controller implements Node {
     private final TcpServer tcpServer;
+    private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>();
     private final Map<String, LiveChunkServer> chunkServers = new HashMap<>();
 
 
@@ -49,44 +50,50 @@ public class Controller implements Node {
     }
 
     @Override
-    public void onEvent(Event event) {
-        int protocol = event.getProtocol();
+    public void onMessage(Message message) {
+        int protocol = message.getProtocol();
         switch (protocol) {
             case Protocol.REGISTER_REQUEST:
-                handleRegisterRequest(event);
+                handleRegisterRequest(message);
                 break;
             case Protocol.MINOR_HEART_BEAT:
-                handleMinorHeartbeat(event);
+                handleMinorHeartbeat(message);
                 break;
             default:
-                throw new RuntimeException(String.format("received an unknown event with protocol %d", protocol));
+                throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
     }
 
-    private void handleMinorHeartbeat(Event event) {
-        MinorHeartbeat heartbeat = (MinorHeartbeat) event;
+    private void handleMinorHeartbeat(Message message) {
+        MinorHeartbeat heartbeat = (MinorHeartbeat) message;
         Utils.debug("received: " + heartbeat);
 //        Socket socket = heartbeat.getSocket();
     }
 
-    private void handleRegisterRequest(Event event) {
-        RegisterRequest request = (RegisterRequest) event;
+    private void handleRegisterRequest(Message message) {
+        RegisterRequest request = (RegisterRequest) message;
         Utils.debug("received: " + request);
-        Socket socket = request.getSocket();
-        String chunkServerId = String.format("%s:%d", request.getIp(), request.getPort());
-        if (!chunkServers.containsKey(chunkServerId)) {
-            TcpSender tcpSender = new TcpSender(socket);
-            chunkServers.put(chunkServerId, new LiveChunkServer(tcpSender));
-        }
-        Utils.debug("chunkServerId: " + chunkServerId);
-        Utils.debug("socketID: " + socket.getInetAddress().getCanonicalHostName() + ":" + socket.getPort());
-        Utils.debug("socketLocal: " + socket.getLocalSocketAddress());
-        Utils.debug("socketRemote: " + socket.getRemoteSocketAddress());
+//        Socket socket = request.getSocket();
+//        String chunkServerId = String.format("%s:%d", request.getIp(), request.getPort());
+//        if (!chunkServers.containsKey(chunkServerId)) {
+//            TcpSender tcpSender = new TcpSender(socket);
+//            chunkServers.put(chunkServerId, new LiveChunkServer(tcpSender));
+//        }
+//        Utils.debug("chunkServerId: " + chunkServerId);
+//        Utils.debug("socketID: " + socket.getInetAddress().getCanonicalHostName() + ":" + socket.getPort());
+//        Utils.debug("socketLocal: " + socket.getLocalSocketAddress());
+//        Utils.debug("socketRemote: " + socket.getRemoteSocketAddress());
     }
 
     @Override
     public String getNodeTypeAsString() {
         return "Controller";
+    }
+
+    @Override
+    public void registerNewTcpConnection(TcpConnection tcpConnection) {
+        connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
+        Utils.debug("registering: " + tcpConnection.getRemoteSocketAddress());
     }
 
     public static void main(String[] args) {

@@ -26,6 +26,14 @@ public class TcpConnection {
         }
     }
 
+    public String getRemoteSocketAddress() {
+        return socket.getRemoteSocketAddress().toString();
+    }
+
+    public String getLocalSocketAddress() {
+        return socket.getLocalSocketAddress().toString();
+    }
+
     public Socket getSocket() {
         return socket;
     }

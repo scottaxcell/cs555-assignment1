@@ -4,7 +4,7 @@ import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.FileChunkifier;
 import cs555.dfs.util.Utils;
-import cs555.dfs.wireformats.Event;
+import cs555.dfs.wireformats.Message;
 import cs555.dfs.wireformats.StoreChunkRequest;
 
 import java.io.IOException;
@@ -54,13 +54,18 @@ public class Client implements Node {
     }
 
     @Override
-    public void onEvent(Event event) {
+    public void onMessage(Message message) {
 
     }
 
     @Override
     public String getNodeTypeAsString() {
         return "Client";
+    }
+
+    @Override
+    public void registerNewTcpConnection(TcpConnection tcpConnection) {
+        // todo
     }
 
     private void handleCmdLineInput() {
@@ -97,8 +102,7 @@ public class Client implements Node {
     }
 
     private void storeFile(Path path) {
-        Utils.debug("storing file: " + path);
-        Utils.debug("storing file: " + path.toAbsolutePath());
+        Utils.debug("storing file: " + Utils.getCanonicalPath(path));
 
         Socket socket = null;
         try {
@@ -113,7 +117,7 @@ public class Client implements Node {
         List<byte[]> bytes = FileChunkifier.chunkifyFile(path.toFile());
         int chunkSequence = 0;
         for (byte[] chunkData : bytes) {
-            StoreChunkRequest request = new StoreChunkRequest(path.toAbsolutePath().toString(), chunkSequence, chunkData);
+            StoreChunkRequest request = new StoreChunkRequest(chunkServerTcpConnection, Utils.getCanonicalPath(path), chunkSequence, chunkData);
             try {
                 chunkServerTcpConnection.send(request.getBytes());
             }

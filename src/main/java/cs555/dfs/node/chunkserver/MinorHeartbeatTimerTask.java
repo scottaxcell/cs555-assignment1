@@ -15,7 +15,7 @@ public class MinorHeartbeatTimerTask extends TimerTask {
     @Override
     public void run() {
         Utils.debug("usableSpace: " + chunkServer.getUsableSpace());
-        MinorHeartbeat heartbeat = new MinorHeartbeat(chunkServer.getUsableSpace(), chunkServer.getNumberOfChunks());
-        chunkServer.sendEventToController(heartbeat);
+        MinorHeartbeat heartbeat = new MinorHeartbeat(chunkServer.getControllerTcpConnection(), chunkServer.getUsableSpace(), chunkServer.getNumberOfChunks());
+        chunkServer.sendMessageToController(heartbeat);
     }
 }

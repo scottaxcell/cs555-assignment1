@@ -1,5 +1,7 @@
 package cs555.dfs.util;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Random;
 
 public class Utils {
@@ -36,6 +38,16 @@ public class Utils {
         }
         catch (InterruptedException e) {
             e.printStackTrace();
+        }
+    }
+
+    public static String getCanonicalPath(Path path) {
+        try {
+            return path.toFile().getCanonicalPath();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return "";
         }
     }
 }

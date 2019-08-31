@@ -5,7 +5,10 @@ import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
-import cs555.dfs.wireformats.*;
+import cs555.dfs.wireformats.Message;
+import cs555.dfs.wireformats.Protocol;
+import cs555.dfs.wireformats.RegisterRequest;
+import cs555.dfs.wireformats.StoreChunkRequest;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,7 +46,7 @@ public class ChunkServer implements Node {
         try {
             Socket socket = new Socket(controllerIp, controllerPort);
             controllerTcpConnection = new TcpConnection(socket, this);
-            RegisterRequest request = new RegisterRequest(tcpServer.getIp(), tcpServer.getPort(), controllerTcpConnection.getSocket());
+            RegisterRequest request = new RegisterRequest(controllerTcpConnection);
             controllerTcpConnection.send(request.getBytes());
         }
         catch (IOException e) {
@@ -52,19 +55,19 @@ public class ChunkServer implements Node {
     }
 
     @Override
-    public void onEvent(Event event) {
-        int protocol = event.getProtocol();
+    public void onMessage(Message message) {
+        int protocol = message.getProtocol();
         switch (protocol) {
             case Protocol.STORE_CHUNK_REQUEST:
-                handleStoreChunkRequest(event);
+                handleStoreChunkRequest(message);
                 break;
             default:
-                throw new RuntimeException(String.format("received an unknown event with protocol %d", protocol));
+                throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
     }
 
-    private void handleStoreChunkRequest(Event event) {
-        StoreChunkRequest request = (StoreChunkRequest) event;
+    private void handleStoreChunkRequest(Message message) {
+        StoreChunkRequest request = (StoreChunkRequest) message;
         Utils.debug("received: " + request);
 
         // todo -- write chunk
@@ -80,7 +83,7 @@ public class ChunkServer implements Node {
         int idx = chunks.indexOf(chunk);
         chunk = chunks.get(idx);
 
-        byte[] chunkData = request.getData();
+        byte[] chunkData = request.getFileData();
         chunk.writeChunk(chunkData);
 
         // todo -- forward chunk to next servers
@@ -100,6 +103,11 @@ public class ChunkServer implements Node {
         return "ChunkServer";
     }
 
+    @Override
+    public void registerNewTcpConnection(TcpConnection tcpConnection) {
+        // todo
+    }
+
     public static void main(String[] args) {
         if (args.length != 2 && args.length != 3)
             printHelpAndExit();
@@ -115,9 +123,9 @@ public class ChunkServer implements Node {
         System.exit(-1);
     }
 
-    public void sendEventToController(Event event) {
+    public void sendMessageToController(Message message) {
         try {
-            controllerTcpConnection.send(event.getBytes());
+            controllerTcpConnection.send(message.getBytes());
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -130,5 +138,9 @@ public class ChunkServer implements Node {
             numChunks += chunks.size();
         }
         return numChunks;
+    }
+
+    TcpConnection getControllerTcpConnection() {
+        return controllerTcpConnection;
     }
 }

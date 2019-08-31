@@ -1,9 +1,12 @@
 package cs555.dfs.node;
 
-import cs555.dfs.wireformats.Event;
+import cs555.dfs.transport.TcpConnection;
+import cs555.dfs.wireformats.Message;
 
 public interface Node {
-    void onEvent(Event event);
+    void onMessage(Message message);
 
     String getNodeTypeAsString();
+
+    void registerNewTcpConnection(TcpConnection tcpConnection);
 }
