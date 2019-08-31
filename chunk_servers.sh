@@ -9,7 +9,7 @@ for chunk_server in $(cat chunk_servers.txt)
 do
   echo 'logging into '$chunk_server
   COMMAND="xterm -e 'ssh -t $chunk_server \"$START_CHUNK_SERVER\"'"
-  echo $COMMAND
+  #echo $COMMAND
   eval $COMMAND &
 done
 
