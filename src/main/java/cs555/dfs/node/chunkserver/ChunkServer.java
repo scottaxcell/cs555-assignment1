@@ -5,10 +5,7 @@ import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
-import cs555.dfs.wireformats.Message;
-import cs555.dfs.wireformats.Protocol;
-import cs555.dfs.wireformats.RegisterRequest;
-import cs555.dfs.wireformats.StoreChunkRequest;
+import cs555.dfs.wireformats.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,14 +13,17 @@ import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkServer implements Node {
     private static final String TMP_DIR = "/tmp";
     private static final long MINOR_HEARTBEAT_DELAY = 2 * 1000; // todo -- should be 30 seconds
+    private static final long MAJOR_HEARTBEAT_DELAY = 5 * 1000; // todo -- should be 5 minutes
     private final Path storageDir;
     private final TcpServer tcpServer;
     private TcpConnection controllerTcpConnection;
-    private Map<String, List<Chunk>> filesToChunks = new HashMap<>();
+    private Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
+    private final List<Chunk> newChunks = new ArrayList<>();
 
     private ChunkServer(String controllerIp, int controllerPort, String serverName) {
         storageDir = Paths.get(TMP_DIR, "sgaxcell/chunkserver" + serverName);
@@ -37,7 +37,7 @@ public class ChunkServer implements Node {
     }
 
     private void initMinorHeartbeatTimer() {
-        MinorHeartbeatTimerTask minorHeartbeatTimerTask = new MinorHeartbeatTimerTask(this);
+        MinorHeartbeatTimerTask minorHeartbeatTimerTask = new MinorHeartbeatTimerTask();
         Timer timer = new Timer(true);
         timer.schedule(minorHeartbeatTimerTask, MINOR_HEARTBEAT_DELAY, MINOR_HEARTBEAT_DELAY);
     }
@@ -78,8 +78,12 @@ public class ChunkServer implements Node {
         Chunk chunk = new Chunk(fileName, sequence, path);
         filesToChunks.computeIfAbsent(fileName, fn -> new ArrayList<>());
         List<Chunk> chunks = filesToChunks.get(fileName);
-        if (!chunks.contains(chunk))
+        if (!chunks.contains(chunk)) {
+            synchronized (newChunks) {
+                newChunks.add(chunk);
+            }
             chunks.add(chunk);
+        }
         int idx = chunks.indexOf(chunk);
         chunk = chunks.get(idx);
 
@@ -94,7 +98,7 @@ public class ChunkServer implements Node {
         return path;
     }
 
-    public long getUsableSpace() {
+    private long getUsableSpace() {
         return new File(TMP_DIR).getUsableSpace();
     }
 
@@ -123,7 +127,7 @@ public class ChunkServer implements Node {
         System.exit(-1);
     }
 
-    public void sendMessageToController(Message message) {
+    private void sendMessageToController(Message message) {
         try {
             controllerTcpConnection.send(message.getBytes());
         }
@@ -132,7 +136,7 @@ public class ChunkServer implements Node {
         }
     }
 
-    public int getNumberOfChunks() {
+    private int getTotalNumberOfChunks() {
         int numChunks = 0;
         for (List<Chunk> chunks : filesToChunks.values()) {
             numChunks += chunks.size();
@@ -142,5 +146,20 @@ public class ChunkServer implements Node {
 
     TcpConnection getControllerTcpConnection() {
         return controllerTcpConnection;
+    }
+
+    private List<Chunk> getNewChunks() {
+        return newChunks;
+    }
+
+    private class MinorHeartbeatTimerTask extends TimerTask {
+        @Override
+        public void run() {
+            synchronized (newChunks) {
+                MinorHeartbeat heartbeat = new MinorHeartbeat(getControllerTcpConnection(), getUsableSpace(), getTotalNumberOfChunks(), getNewChunks());
+                newChunks.clear();
+                sendMessageToController(heartbeat);
+            }
+        }
     }
 }

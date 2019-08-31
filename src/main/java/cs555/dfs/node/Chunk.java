@@ -10,7 +10,7 @@ import java.util.Objects;
 
 public class Chunk {
     private final String fileName;
-    private final Path path;
+    private Path path;
     private int version;
     private int sequence;
     private Instant timeStamp;
@@ -21,8 +21,11 @@ public class Chunk {
         this.path = path;
     }
 
-    public Path getPath() {
-        return path;
+    public Chunk(String fileName, int version, int sequence, Instant timeStamp) {
+        this.fileName = fileName;
+        this.version = version;
+        this.sequence = sequence;
+        this.timeStamp = timeStamp;
     }
 
     @Override
@@ -79,5 +82,21 @@ public class Chunk {
             e.printStackTrace();
         }
         return bytes;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public int getVersion() {
+        return version;
+    }
+
+    public int getSequence() {
+        return sequence;
+    }
+
+    public Instant getTimeStamp() {
+        return timeStamp;
     }
 }

@@ -40,8 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Controller implements Node {
     private final TcpServer tcpServer;
     private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>();
-    private final Map<String, LiveChunkServer> chunkServers = new HashMap<>();
-
+    private final Map<String, ChunkServerInfo> chunkServers = new HashMap<>();
 
     public Controller(int port) {
         tcpServer = new TcpServer(port, this);
@@ -67,22 +66,18 @@ public class Controller implements Node {
     private void handleMinorHeartbeat(Message message) {
         MinorHeartbeat heartbeat = (MinorHeartbeat) message;
         Utils.debug("received: " + heartbeat);
-//        Socket socket = heartbeat.getSocket();
+        chunkServers.get(heartbeat.getSourceId()).minorHeartbeatUpdate(heartbeat);
+        Utils.debug(chunkServers.get(heartbeat.getSourceId()));
     }
 
     private void handleRegisterRequest(Message message) {
         RegisterRequest request = (RegisterRequest) message;
         Utils.debug("received: " + request);
-//        Socket socket = request.getSocket();
-//        String chunkServerId = String.format("%s:%d", request.getIp(), request.getPort());
-//        if (!chunkServers.containsKey(chunkServerId)) {
-//            TcpSender tcpSender = new TcpSender(socket);
-//            chunkServers.put(chunkServerId, new LiveChunkServer(tcpSender));
-//        }
-//        Utils.debug("chunkServerId: " + chunkServerId);
-//        Utils.debug("socketID: " + socket.getInetAddress().getCanonicalHostName() + ":" + socket.getPort());
-//        Utils.debug("socketLocal: " + socket.getLocalSocketAddress());
-//        Utils.debug("socketRemote: " + socket.getRemoteSocketAddress());
+        String chunkServerId = request.getSourceId();
+        if (!chunkServers.containsKey(chunkServerId)) {
+            chunkServers.put(chunkServerId, new ChunkServerInfo(connections.get(chunkServerId)));
+            Utils.debug("registering chunk server: " + chunkServerId);
+        }
     }
 
     @Override
@@ -93,7 +88,7 @@ public class Controller implements Node {
     @Override
     public void registerNewTcpConnection(TcpConnection tcpConnection) {
         connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
-        Utils.debug("registering: " + tcpConnection.getRemoteSocketAddress());
+        Utils.debug("registering tcp connection: " + tcpConnection.getRemoteSocketAddress());
     }
 
     public static void main(String[] args) {

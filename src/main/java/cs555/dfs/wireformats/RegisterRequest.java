@@ -48,4 +48,8 @@ public class RegisterRequest implements Message {
             "messageHeader=" + messageHeader +
             '}';
     }
+
+    public String getSourceId() {
+        return messageHeader.getSourceId();
+    }
 }

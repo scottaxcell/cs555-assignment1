@@ -3,7 +3,7 @@ Building a distributed, replicated, and fault tolerant path system
 
 ## TODO
 ### Miscellaneous
-* can i remove the socket from the messages and create constructors that take serialized data
+* ~~can i remove the socket from the messages and create constructors that take serialized data~~
 * ~~create run script to launch controller, chunk servers, and client for easier testing~~
 * ~~add temp testing command line handling for easier testing~~
 
