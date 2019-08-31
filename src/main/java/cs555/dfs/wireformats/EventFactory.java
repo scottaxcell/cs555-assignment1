@@ -20,9 +20,22 @@ public class EventFactory {
                 return createRegisterRequest(data.length, dataInputStream, socket);
             case Protocol.STORE_CHUNK_REQUEST:
                 return createStoreRegisterRequest(data.length, dataInputStream);
+            case Protocol.MINOR_HEART_BEAT:
+                return createMinorHeartbeat(data.length, dataInputStream, socket);
             default:
                 throw new RuntimeException(String.format("received an unknown event with protocol %d", protocol));
         }
+    }
+
+    private static MinorHeartbeat createMinorHeartbeat(int length, DataInputStream dataInputStream, Socket socket) throws IOException {
+        /**
+         * Event Type (int): MINOR_HEARTBEAT
+         * Usable space (long)
+         * Number of chunks (int)
+         */
+        long usableSpace = dataInputStream.readLong();
+        int numChunks = dataInputStream.readInt();
+        return new MinorHeartbeat(usableSpace, numChunks);
     }
 
     private static StoreChunkRequest createStoreRegisterRequest(int dataLength, DataInputStream dataInputStream) throws IOException {

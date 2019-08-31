@@ -1,37 +1,42 @@
-package cs555.dfs.node;
+package cs555.dfs.node.chunkserver;
 
+import cs555.dfs.node.Chunk;
+import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
-import cs555.dfs.wireformats.Event;
-import cs555.dfs.wireformats.Protocol;
-import cs555.dfs.wireformats.RegisterRequest;
-import cs555.dfs.wireformats.StoreChunkRequest;
+import cs555.dfs.wireformats.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ChunkServer implements Node {
-    private final String tmpDir;
+    private static final String TMP_DIR = "/tmp";
+    private static final long MINOR_HEARTBEAT_DELAY = 2 * 1000; // todo -- should be 30 seconds
+    private final Path storageDir;
     private final TcpServer tcpServer;
     private TcpConnection controllerTcpConnection;
     private Map<String, List<Chunk>> filesToChunks = new HashMap<>();
 
     private ChunkServer(String controllerIp, int controllerPort, String serverName) {
-        tmpDir = "/tmp/sgaxcell/chunkserver" + serverName;
+        storageDir = Paths.get(TMP_DIR, "sgaxcell/chunkserver" + serverName);
 //        tcpServer = new TcpServer(0, this); // todo -- use random port
         tcpServer = new TcpServer(11322, this);
         new Thread(tcpServer).start();
         Utils.sleep(500);
 
         registerWithController(controllerIp, controllerPort);
+        initMinorHeartbeatTimer();
+    }
+
+    private void initMinorHeartbeatTimer() {
+        MinorHeartbeatTimerTask minorHeartbeatTimerTask = new MinorHeartbeatTimerTask(this);
+        Timer timer = new Timer(true);
+        timer.schedule(minorHeartbeatTimerTask, MINOR_HEARTBEAT_DELAY, MINOR_HEARTBEAT_DELAY);
     }
 
     private void registerWithController(String controllerIp, int controllerPort) {
@@ -82,12 +87,12 @@ public class ChunkServer implements Node {
     }
 
     private Path generateWritePath(String fileName, int chunkSequence) {
-        Path path = Paths.get(tmpDir, fileName + "_chunk" + chunkSequence);
+        Path path = Paths.get(storageDir.toString(), fileName + "_chunk" + chunkSequence);
         return path;
     }
 
     public long getUsableSpace() {
-        return new File(tmpDir).getUsableSpace();
+        return new File(TMP_DIR).getUsableSpace();
     }
 
     @Override
@@ -108,5 +113,22 @@ public class ChunkServer implements Node {
     private static void printHelpAndExit() {
         Utils.out("USAGE: java ChunkServer <controller-host> <controller-port>\n");
         System.exit(-1);
+    }
+
+    public void sendEventToController(Event event) {
+        try {
+            controllerTcpConnection.send(event.getBytes());
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public int getNumberOfChunks() {
+        int numChunks = 0;
+        for (List<Chunk> chunks : filesToChunks.values()) {
+            numChunks += chunks.size();
+        }
+        return numChunks;
     }
 }
