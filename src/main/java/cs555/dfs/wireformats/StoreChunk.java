@@ -2,18 +2,21 @@ package cs555.dfs.wireformats;
 
 import java.io.*;
 
-public class StoreChunkRequest implements Message {
+public class StoreChunk implements Message {
     private MessageHeader messageHeader;
     private String fileName;
     private int chunkSequence;
+    private byte[] fileData;
+    // todo -- add support for additional chunk servers
 
-    public StoreChunkRequest(String serverAddress, String sourceAddress, String fileName, int chunkSequence) {
+    public StoreChunk(String serverAddress, String sourceAddress, String fileName, int chunkSequence, byte[] fileData) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.fileName = fileName;
         this.chunkSequence = chunkSequence;
+        this.fileData = fileData;
     }
 
-    public StoreChunkRequest(byte[] bytes) throws IOException {
+    public StoreChunk(byte[] bytes) throws IOException {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
         DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
@@ -25,6 +28,10 @@ public class StoreChunkRequest implements Message {
         byte[] fileNameBytes = new byte[fileNameLength];
         dataInputStream.readFully(fileNameBytes, 0, fileNameLength);
         fileName = new String(fileNameBytes);
+
+        int bytesLength = dataInputStream.readInt();
+        fileData = new byte[bytesLength];
+        dataInputStream.readFully(fileData, 0, bytesLength);
 
         byteArrayInputStream.close();
         dataInputStream.close();
@@ -47,6 +54,9 @@ public class StoreChunkRequest implements Message {
         dataOutputStream.writeInt(fileName.length());
         dataOutputStream.write(fileName.getBytes());
 
+        dataOutputStream.writeInt(fileData.length);
+        dataOutputStream.write(fileData);
+
         dataOutputStream.flush();
 
         byte[] data = byteArrayOutputStream.toByteArray();
@@ -63,6 +73,7 @@ public class StoreChunkRequest implements Message {
             "messageHeader=" + messageHeader +
             ", fileName='" + fileName + '\'' +
             ", chunkSequence=" + chunkSequence +
+            ", fileData.length=" + fileData.length +
             '}';
     }
 
@@ -74,7 +85,7 @@ public class StoreChunkRequest implements Message {
         return chunkSequence;
     }
 
-    public String getSourceAddress() {
-        return messageHeader.getSourceAddress();
+    public byte[] getFileData() {
+        return fileData;
     }
 }

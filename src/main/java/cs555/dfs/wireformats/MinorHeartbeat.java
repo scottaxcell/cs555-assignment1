@@ -1,7 +1,6 @@
 package cs555.dfs.wireformats;
 
 import cs555.dfs.node.Chunk;
-import cs555.dfs.transport.TcpConnection;
 
 import java.io.*;
 import java.time.Instant;
@@ -15,8 +14,8 @@ public class MinorHeartbeat implements Message {
     private int totalNumberOfChunks;
     private List<Chunk> newChunks = new ArrayList<>();
 
-    public MinorHeartbeat(TcpConnection tcpConnection, long usableSpace, int totalNumberOfChunks, List<Chunk> newChunks) {
-        this.messageHeader = new MessageHeader(getProtocol(), tcpConnection);
+    public MinorHeartbeat(String serverAddress, String sourceAddress, long usableSpace, int totalNumberOfChunks, List<Chunk> newChunks) {
+        this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.usableSpace = usableSpace;
         this.totalNumberOfChunks = totalNumberOfChunks;
         this.newChunks = newChunks;
@@ -97,8 +96,8 @@ public class MinorHeartbeat implements Message {
             '}';
     }
 
-    public String getSourceId() {
-        return messageHeader.getSourceId();
+    public String getServerAddress() {
+        return messageHeader.getServerAddress();
     }
 
     public long getUsableSpace() {

@@ -5,7 +5,9 @@ import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.FileChunkifier;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.Message;
+import cs555.dfs.wireformats.Protocol;
 import cs555.dfs.wireformats.StoreChunkRequest;
+import cs555.dfs.wireformats.StoreChunkResponse;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -18,21 +20,19 @@ import java.util.regex.Pattern;
 /**
  * USE CASES
  * =========
- *
+ * <p>
  * store file on dfs:
  * - chunkify file
  * - ask controller for 3 servers
  * - send chunk to first server
  * - wait for response before asking controller for next set of servers for the next chunk
  * - repeat for each chunk
- *
+ * <p>
  * read file from dfs:
  * - ask controller for servers
  * - ask each server for all available chunks
  * - sort chunks according to sequence number
  * - write chunks to file on disk -- user will specify location
- *
- *
  */
 public class Client implements Node {
     private final TcpServer tcpServer;
@@ -40,22 +40,34 @@ public class Client implements Node {
 
     public Client(String controllerIp, int controllerPort) {
         tcpServer = new TcpServer(0, this);
-//        new Thread(tcpServer).start();
-//
-//        try {
-//            Socket socket = new Socket(controllerIp, controllerPort);
-//            controllerTcpConnection = TcpConnection.of(socket, this);
-//        }
-//        catch (IOException e) {
-//            e.printStackTrace();
-//        }
+        new Thread(tcpServer).start();
+
+        try {
+            Socket socket = new Socket(controllerIp, controllerPort);
+            controllerTcpConnection = new TcpConnection(socket, this);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
 
         handleCmdLineInput();
     }
 
     @Override
     public void onMessage(Message message) {
+        int protocol = message.getProtocol();
+        switch (protocol) {
+            case Protocol.STORE_CHUNK_RESPONSE:
+                handleStoreChunkResponse(message);
+                break;
+            default:
+                throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
+        }
+    }
 
+    private void handleStoreChunkResponse(Message message) {
+        StoreChunkResponse response = (StoreChunkResponse) message;
+        Utils.debug("received: " + response);
     }
 
     @Override
@@ -66,6 +78,11 @@ public class Client implements Node {
     @Override
     public void registerNewTcpConnection(TcpConnection tcpConnection) {
         // todo
+    }
+
+    @Override
+    public String getServerAddress() {
+        return Utils.getServerAddress(tcpServer);
     }
 
     private void handleCmdLineInput() {
@@ -83,7 +100,7 @@ public class Client implements Node {
                 // todo -- turn on ask for file
 //                Utils.out("fileName: \n");
 //                String fileName = scanner.next();
-                String fileName = "./bogus.bin";
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.bin";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.out("file does not exist: " + path + "\n");
@@ -104,32 +121,44 @@ public class Client implements Node {
     private void storeFile(Path path) {
         Utils.debug("storing file: " + Utils.getCanonicalPath(path));
 
-        Socket socket = null;
-        try {
-            socket = new Socket("127.0.0.1", 11322);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-            System.exit(-1);
-        }
-        TcpConnection chunkServerTcpConnection = new TcpConnection(socket, this);
-
+//        Socket socket = null;
+//        try {
+//            socket = new Socket("127.0.0.1", 11322);
+//        }
+//        catch (IOException e) {
+//            e.printStackTrace();
+//            System.exit(-1);
+//        }
+//        TcpConnection chunkServerTcpConnection = new TcpConnection(socket, this);
+//
+//        List<byte[]> bytes = FileChunkifier.chunkifyFile(path.toFile());
+//        int chunkSequence = 0;
+//        for (byte[] chunkData : bytes) {
+//            StoreChunkRequest request = new StoreChunkRequest(getServerAddress(), chunkServerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path), chunkSequence);
+//            try {
+//                chunkServerTcpConnection.send(request.getBytes());
+//            }
+//            catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            chunkSequence++;
+//        }
+        // todo -- chunkify file, then for each chunk do the following
+        // todo -- ask controller for chunk servers
+        // todo -- send chunk plus next servers to first server
+        // todo -- wait for response that chunk has been written from first server before next controller request
         List<byte[]> bytes = FileChunkifier.chunkifyFile(path.toFile());
         int chunkSequence = 0;
         for (byte[] chunkData : bytes) {
-            StoreChunkRequest request = new StoreChunkRequest(chunkServerTcpConnection, Utils.getCanonicalPath(path), chunkSequence, chunkData);
+            StoreChunkRequest request = new StoreChunkRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path), chunkSequence);
             try {
-                chunkServerTcpConnection.send(request.getBytes());
+                controllerTcpConnection.send(request.getBytes());
             }
             catch (IOException e) {
                 e.printStackTrace();
             }
             chunkSequence++;
         }
-        // todo -- chunkify file, then for each chunk do the following
-        // todo -- ask controller for chunk servers
-        // todo -- send chunk plus next servers to first server
-        // todo -- wait for response that chunk has been written from first server before next controller request
     }
 
     public static void main(String[] args) {

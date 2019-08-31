@@ -1,14 +1,12 @@
 package cs555.dfs.wireformats;
 
-import cs555.dfs.transport.TcpConnection;
-
 import java.io.*;
 
 public class RegisterRequest implements Message {
     private MessageHeader messageHeader;
 
-    public RegisterRequest(TcpConnection tcpConnection) {
-        this.messageHeader = new MessageHeader(getProtocol(), tcpConnection);
+    public RegisterRequest(String serverAddress, String sourceAdress) {
+        this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAdress);
     }
 
     public RegisterRequest(byte[] bytes) throws IOException {
@@ -49,7 +47,11 @@ public class RegisterRequest implements Message {
             '}';
     }
 
-    public String getSourceId() {
-        return messageHeader.getSourceId();
+    public String getServerAddress() {
+        return messageHeader.getServerAddress();
+    }
+
+    public String getSourceAddress() {
+        return messageHeader.getSourceAddress();
     }
 }

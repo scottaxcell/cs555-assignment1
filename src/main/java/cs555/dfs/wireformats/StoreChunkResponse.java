@@ -1,19 +1,23 @@
 package cs555.dfs.wireformats;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
-public class StoreChunkRequest implements Message {
+public class StoreChunkResponse implements Message {
     private MessageHeader messageHeader;
     private String fileName;
     private int chunkSequence;
+    private List<String> chunkServerAddresses = new ArrayList<>();
 
-    public StoreChunkRequest(String serverAddress, String sourceAddress, String fileName, int chunkSequence) {
+    public StoreChunkResponse(String serverAddress, String sourceAddress, String fileName, int chunkSequence, List<String> chunkServerAddresses) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.fileName = fileName;
         this.chunkSequence = chunkSequence;
+        this.chunkServerAddresses = chunkServerAddresses;
     }
 
-    public StoreChunkRequest(byte[] bytes) throws IOException {
+    public StoreChunkResponse(byte[] bytes) throws IOException {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
         DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
@@ -26,13 +30,22 @@ public class StoreChunkRequest implements Message {
         dataInputStream.readFully(fileNameBytes, 0, fileNameLength);
         fileName = new String(fileNameBytes);
 
+        int numAddresses = dataInputStream.readInt();
+        for (int i = 0; i < numAddresses; i++) {
+            int addressLength = dataInputStream.readInt();
+            byte[] addressBytes = new byte[addressLength];
+            dataInputStream.readFully(addressBytes, 0, addressLength);
+            String address = new String(addressBytes);
+            chunkServerAddresses.add(address);
+        }
+
         byteArrayInputStream.close();
         dataInputStream.close();
     }
 
     @Override
     public int getProtocol() {
-        return Protocol.STORE_CHUNK_REQUEST;
+        return Protocol.STORE_CHUNK_RESPONSE;
     }
 
     @Override
@@ -47,6 +60,13 @@ public class StoreChunkRequest implements Message {
         dataOutputStream.writeInt(fileName.length());
         dataOutputStream.write(fileName.getBytes());
 
+        int numAddresses = chunkServerAddresses.size();
+        dataOutputStream.writeInt(numAddresses);
+        for (String chunkServerAddress : chunkServerAddresses) {
+            dataOutputStream.writeInt(chunkServerAddress.length());
+            dataOutputStream.write(chunkServerAddress.getBytes());
+        }
+
         dataOutputStream.flush();
 
         byte[] data = byteArrayOutputStream.toByteArray();
@@ -59,10 +79,11 @@ public class StoreChunkRequest implements Message {
 
     @Override
     public String toString() {
-        return "StoreChunkRequest{" +
+        return "StoreChunkResponse{" +
             "messageHeader=" + messageHeader +
             ", fileName='" + fileName + '\'' +
             ", chunkSequence=" + chunkSequence +
+            ", chunkServerAddresses=" + chunkServerAddresses +
             '}';
     }
 
@@ -76,5 +97,9 @@ public class StoreChunkRequest implements Message {
 
     public String getSourceAddress() {
         return messageHeader.getSourceAddress();
+    }
+
+    public List<String> getChunkServerAddresses() {
+        return chunkServerAddresses;
     }
 }

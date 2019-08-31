@@ -17,18 +17,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkServer implements Node {
     private static final String TMP_DIR = "/tmp";
-    private static final long MINOR_HEARTBEAT_DELAY = 2 * 1000; // todo -- should be 30 seconds
-    private static final long MAJOR_HEARTBEAT_DELAY = 5 * 1000; // todo -- should be 5 minutes
+    private static final long MINOR_HEARTBEAT_DELAY = 5 * 60 * 1000; // todo -- should be 30 seconds
+//    private static final long MAJOR_HEARTBEAT_DELAY = 30 * 1000; // todo -- should be 5 minutes
+    private final int port;
     private final Path storageDir;
     private final TcpServer tcpServer;
     private TcpConnection controllerTcpConnection;
     private Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
     private final List<Chunk> newChunks = new ArrayList<>();
 
-    private ChunkServer(String controllerIp, int controllerPort, String serverName) {
+    private ChunkServer(int port, String controllerIp, int controllerPort, String serverName) {
+        this.port = port;
         storageDir = Paths.get(TMP_DIR, "sgaxcell/chunkserver" + serverName);
-//        tcpServer = new TcpServer(0, this); // todo -- use random port
-        tcpServer = new TcpServer(11322, this);
+        tcpServer = new TcpServer(port, this);
         new Thread(tcpServer).start();
         Utils.sleep(500);
 
@@ -46,7 +47,7 @@ public class ChunkServer implements Node {
         try {
             Socket socket = new Socket(controllerIp, controllerPort);
             controllerTcpConnection = new TcpConnection(socket, this);
-            RegisterRequest request = new RegisterRequest(controllerTcpConnection);
+            RegisterRequest request = new RegisterRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress());
             controllerTcpConnection.send(request.getBytes());
         }
         catch (IOException e) {
@@ -67,7 +68,7 @@ public class ChunkServer implements Node {
     }
 
     private void handleStoreChunkRequest(Message message) {
-        StoreChunkRequest request = (StoreChunkRequest) message;
+        StoreChunk request = (StoreChunk) message;
         Utils.debug("received: " + request);
 
         // todo -- write chunk
@@ -77,6 +78,7 @@ public class ChunkServer implements Node {
 
         Chunk chunk = new Chunk(fileName, sequence, path);
         filesToChunks.computeIfAbsent(fileName, fn -> new ArrayList<>());
+
         List<Chunk> chunks = filesToChunks.get(fileName);
         if (!chunks.contains(chunk)) {
             synchronized (newChunks) {
@@ -112,18 +114,25 @@ public class ChunkServer implements Node {
         // todo
     }
 
+    @Override
+    public String getServerAddress() {
+        return Utils.getServerAddress(tcpServer);
+    }
+
     public static void main(String[] args) {
-        if (args.length != 2 && args.length != 3)
+        if (args.length != 3 && args.length != 4)
             printHelpAndExit();
 
-        String controllerIp = args[0];
-        int controllerPort = Integer.parseInt(args[1]);
+        int port = Integer.parseInt(args[0]);
+        String controllerIp = args[1];
+        int controllerPort = Integer.parseInt(args[2]);
+        String serverName = args.length == 4 ? args[3] : "";
 
-        new ChunkServer(controllerIp, controllerPort, args.length == 3 ? args[2] : "");
+        new ChunkServer(port, controllerIp, controllerPort, serverName);
     }
 
     private static void printHelpAndExit() {
-        Utils.out("USAGE: java ChunkServer <controller-host> <controller-port>\n");
+        Utils.out("USAGE: java ChunkServer <port> <controller-host> <controller-port>\n");
         System.exit(-1);
     }
 
@@ -144,10 +153,6 @@ public class ChunkServer implements Node {
         return numChunks;
     }
 
-    TcpConnection getControllerTcpConnection() {
-        return controllerTcpConnection;
-    }
-
     private List<Chunk> getNewChunks() {
         return newChunks;
     }
@@ -156,7 +161,7 @@ public class ChunkServer implements Node {
         @Override
         public void run() {
             synchronized (newChunks) {
-                MinorHeartbeat heartbeat = new MinorHeartbeat(getControllerTcpConnection(), getUsableSpace(), getTotalNumberOfChunks(), getNewChunks());
+                MinorHeartbeat heartbeat = new MinorHeartbeat(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), getUsableSpace(), getTotalNumberOfChunks(), getNewChunks());
                 newChunks.clear();
                 sendMessageToController(heartbeat);
             }

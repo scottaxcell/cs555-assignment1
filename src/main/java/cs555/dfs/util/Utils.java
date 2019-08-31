@@ -1,5 +1,7 @@
 package cs555.dfs.util;
 
+import cs555.dfs.transport.TcpServer;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Random;
@@ -49,5 +51,11 @@ public class Utils {
             e.printStackTrace();
             return "";
         }
+    }
+
+    public static String getServerAddress(TcpServer tcpServer) {
+        if (tcpServer == null)
+            return "";
+        return String.format("%s:%d", tcpServer.getIp(), tcpServer.getPort());
     }
 }

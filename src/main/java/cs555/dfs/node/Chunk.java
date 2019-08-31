@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.Objects;
 
 public class Chunk {
     private final String fileName;
@@ -26,19 +25,6 @@ public class Chunk {
         this.version = version;
         this.sequence = sequence;
         this.timeStamp = timeStamp;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Chunk chunk = (Chunk) o;
-        return path.equals(chunk.path);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(path);
     }
 
     @Override

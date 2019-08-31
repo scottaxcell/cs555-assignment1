@@ -1,24 +1,16 @@
 package cs555.dfs.wireformats;
 
-import cs555.dfs.transport.TcpConnection;
-
 import java.io.*;
 
 public class MessageHeader implements Message {
     private final int protocol;
-    private final String sourceId;
-    private final String destinationId;
+    private final String serverAddress;
+    private final String sourceAddress;
 
-    public MessageHeader(int protocol, TcpConnection tcpConnection) {
+    MessageHeader(int protocol, String serverAddress, String sourceAddress) {
         this.protocol = protocol;
-        this.sourceId = tcpConnection.getLocalSocketAddress();
-        this.destinationId = tcpConnection.getRemoteSocketAddress();
-    }
-
-    public MessageHeader(int protocol, String sourceId, String destinationId) {
-        this.protocol = protocol;
-        this.sourceId = sourceId;
-        this.destinationId = destinationId;
+        this.serverAddress = serverAddress;
+        this.sourceAddress = sourceAddress;
     }
 
     @Override
@@ -33,11 +25,11 @@ public class MessageHeader implements Message {
 
         dataOutputStream.writeInt(getProtocol());
 
-        dataOutputStream.writeInt(sourceId.getBytes().length);
-        dataOutputStream.write(sourceId.getBytes());
+        dataOutputStream.writeInt(serverAddress.getBytes().length);
+        dataOutputStream.write(serverAddress.getBytes());
 
-        dataOutputStream.writeInt(destinationId.getBytes().length);
-        dataOutputStream.write(destinationId.getBytes());
+        dataOutputStream.writeInt(sourceAddress.getBytes().length);
+        dataOutputStream.write(sourceAddress.getBytes());
 
         dataOutputStream.flush();
 
@@ -49,36 +41,35 @@ public class MessageHeader implements Message {
         return data;
     }
 
-    public String getSourceId() {
-        return sourceId;
+    public String getServerAddress() {
+        return serverAddress;
     }
 
-    public String getDestinationId() {
-        return destinationId;
+    public String getSourceAddress() {
+        return sourceAddress;
     }
 
     public static MessageHeader deserialize(DataInputStream dataInputStream) throws IOException {
         int protocol = dataInputStream.readInt();
 
-        int sourceLength = dataInputStream.readInt();
-        byte[] sourceBytes = new byte[sourceLength];
-        dataInputStream.readFully(sourceBytes);
-        String sourceId = new String(sourceBytes);
+        int serverAddressLength = dataInputStream.readInt();
+        byte[] serverAddressBytes = new byte[serverAddressLength];
+        dataInputStream.readFully(serverAddressBytes);
+        String serverAddress = new String(serverAddressBytes);
 
-        int destinationLength = dataInputStream.readInt();
-        byte[] destinationBytes = new byte[destinationLength];
-        dataInputStream.readFully(destinationBytes);
-        String destinationId = new String(destinationBytes);
+        int sourceAddressLength = dataInputStream.readInt();
+        byte[] sourceAddressBytes = new byte[sourceAddressLength];
+        dataInputStream.readFully(sourceAddressBytes);
+        String sourceAddress = new String(sourceAddressBytes);
 
-        return new MessageHeader(protocol, sourceId, destinationId);
+        return new MessageHeader(protocol, serverAddress, sourceAddress);
     }
 
     @Override
     public String toString() {
         return "MessageHeader{" +
             "protocol=" + protocol +
-            ", sourceId='" + sourceId + '\'' +
-            ", destinationId='" + destinationId + '\'' +
+            ", serverAddress='" + serverAddress + '\'' +
             '}';
     }
 }

@@ -9,4 +9,6 @@ public interface Node {
     String getNodeTypeAsString();
 
     void registerNewTcpConnection(TcpConnection tcpConnection);
+
+    String getServerAddress();
 }

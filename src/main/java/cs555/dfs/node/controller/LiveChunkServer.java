@@ -11,13 +11,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ChunkServerInfo {
+public class LiveChunkServer {
     private final TcpConnection tcpConnection;
     private Map<String, List<Chunk>> filesToChunks = new HashMap<>();
     private long usableSpace;
     private int totalNumberOfChunks;
 
-    public ChunkServerInfo(TcpConnection tcpConnection) {
+    public LiveChunkServer(TcpConnection tcpConnection) {
         this.tcpConnection = tcpConnection;
     }
 
@@ -44,11 +44,23 @@ public class ChunkServerInfo {
 
     @Override
     public String toString() {
-        return "ChunkServerInfo{" +
+        return "LiveChunkServer{" +
             "tcpConnection=" + tcpConnection +
             ", filesToChunks=" + filesToChunks +
             ", usableSpace=" + usableSpace +
             ", totalNumberOfChunks=" + totalNumberOfChunks +
             '}';
+    }
+
+    public boolean containsChunk(String fileName, int chunkSequence) {
+        List<Chunk> chunks = filesToChunks.get(fileName);
+        if (chunks == null)
+            return false;
+
+        for (Chunk chunk : chunks)
+            if (chunk.getSequence() == chunkSequence)
+                return true;
+
+        return false;
     }
 }

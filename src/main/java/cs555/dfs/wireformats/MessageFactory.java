@@ -16,6 +16,8 @@ public class MessageFactory {
                 return new RegisterRequest(data);
             case Protocol.STORE_CHUNK_REQUEST:
                 return new StoreChunkRequest(data);
+            case Protocol.STORE_CHUNK_RESPONSE:
+                return new StoreChunkResponse(data);
             case Protocol.MINOR_HEART_BEAT:
                 return new MinorHeartbeat(data);
             default:
