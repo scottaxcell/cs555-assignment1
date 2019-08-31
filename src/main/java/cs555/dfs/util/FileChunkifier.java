@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 public class FileChunkifier {
@@ -20,7 +21,7 @@ public class FileChunkifier {
         long numChunks = file.length() / CHUNK_SIZE;
         Utils.debug("numChunks: " + numChunks);
         int remainderChunk = (int) (file.length() % CHUNK_SIZE);
-        Utils.debug("remainderChunk: " + remainderChunk);
+        Utils.debug("remainderChunk size: " + remainderChunk);
 
         int chunkSequence = 0;
         for (; chunkSequence < numChunks; chunkSequence++) {
@@ -35,6 +36,15 @@ public class FileChunkifier {
         }
 
         return bytes;
+    }
+
+    public static List<FileDataChunk> chunkifyFileToFileDataChunks(File file) {
+        List<FileDataChunk> fileDataChunks = new ArrayList<>();
+        List<byte[]> bytes = chunkifyFile(file);
+        for (int i = 0; i < bytes.size(); i++) {
+            fileDataChunks.add(new FileDataChunk(i, bytes.get(i)));
+        }
+        return fileDataChunks;
     }
 
     private static byte[] readFileToBytes(File file) {
@@ -84,6 +94,34 @@ public class FileChunkifier {
         }
         catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+
+    public static class FileDataChunk {
+        public final int sequence;
+        public byte[] fileData;
+
+        public FileDataChunk(int sequence, byte[] fileData) {
+            this.sequence = sequence;
+            this.fileData = fileData;
+        }
+
+        public FileDataChunk(int sequence) {
+            this.sequence = sequence;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            FileDataChunk that = (FileDataChunk) o;
+            return sequence == that.sequence;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(sequence);
         }
     }
 }

@@ -34,6 +34,7 @@ public class MinorHeartbeat implements Message {
         for (int i = 0; i < numNewChunks; i++) {
             int fileNameLength = dataInputStream.readInt();
             byte[] fileNameBytes = new byte[fileNameLength];
+            dataInputStream.readFully(fileNameBytes, 0, fileNameLength);
             String fileName = new String(fileNameBytes);
 
             int version = dataInputStream.readInt();
@@ -93,6 +94,7 @@ public class MinorHeartbeat implements Message {
             "messageHeader=" + messageHeader +
             ", usableSpace=" + usableSpace +
             ", totalNumberOfChunks=" + totalNumberOfChunks +
+            ", newChunks=" + newChunks +
             '}';
     }
 

@@ -58,4 +58,10 @@ public class Utils {
             return "";
         return String.format("%s:%d", tcpServer.getIp(), tcpServer.getPort());
     }
+
+    public static String[] splitServerAddress(String serverAddress) {
+        if (serverAddress == null)
+            return new String[0];
+        return serverAddress.split(":");
+    }
 }

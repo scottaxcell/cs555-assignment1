@@ -1,19 +1,22 @@
 package cs555.dfs.wireformats;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class StoreChunk implements Message {
     private MessageHeader messageHeader;
     private String fileName;
     private int chunkSequence;
     private byte[] fileData;
-    // todo -- add support for additional chunk servers
+    private List<String> nextServers = new ArrayList<>();
 
-    public StoreChunk(String serverAddress, String sourceAddress, String fileName, int chunkSequence, byte[] fileData) {
+    public StoreChunk(String serverAddress, String sourceAddress, String fileName, int chunkSequence, byte[] fileData, List<String> nextServers) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.fileName = fileName;
         this.chunkSequence = chunkSequence;
         this.fileData = fileData;
+        this.nextServers = nextServers;
     }
 
     public StoreChunk(byte[] bytes) throws IOException {
@@ -33,13 +36,22 @@ public class StoreChunk implements Message {
         fileData = new byte[bytesLength];
         dataInputStream.readFully(fileData, 0, bytesLength);
 
+        int numServers = dataInputStream.readInt();
+        for (int i = 0; i < numServers; i++) {
+            int serverLength = dataInputStream.readInt();
+            byte[] serverBytes = new byte[serverLength];
+            dataInputStream.readFully(serverBytes, 0, serverLength);
+            String server = new String(serverBytes);
+            nextServers.add(server);
+        }
+
         byteArrayInputStream.close();
         dataInputStream.close();
     }
 
     @Override
     public int getProtocol() {
-        return Protocol.STORE_CHUNK_REQUEST;
+        return Protocol.STORE_CHUNK;
     }
 
     @Override
@@ -57,6 +69,12 @@ public class StoreChunk implements Message {
         dataOutputStream.writeInt(fileData.length);
         dataOutputStream.write(fileData);
 
+        dataOutputStream.writeInt(nextServers.size());
+        for (String server : nextServers) {
+            dataOutputStream.writeInt(server.length());
+            dataOutputStream.write(server.getBytes());
+        }
+
         dataOutputStream.flush();
 
         byte[] data = byteArrayOutputStream.toByteArray();
@@ -69,11 +87,12 @@ public class StoreChunk implements Message {
 
     @Override
     public String toString() {
-        return "StoreChunkRequest{" +
+        return "StoreChunk{" +
             "messageHeader=" + messageHeader +
             ", fileName='" + fileName + '\'' +
             ", chunkSequence=" + chunkSequence +
             ", fileData.length=" + fileData.length +
+            ", nextServers=" + nextServers +
             '}';
     }
 
@@ -87,5 +106,9 @@ public class StoreChunk implements Message {
 
     public byte[] getFileData() {
         return fileData;
+    }
+
+    public List<String> getNextServers() {
+        return nextServers;
     }
 }

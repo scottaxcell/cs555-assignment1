@@ -9,6 +9,7 @@ import cs555.dfs.wireformats.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * USE CASES
@@ -35,9 +36,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * - metadata associated with server
  */
 public class Controller implements Node {
+    private static final int REPLICATION_LEVEL = 3;
     private final TcpServer tcpServer;
     private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>(); // key = remote socket address
-    private final Map<String, LiveChunkServer> liveChunkServers = new ConcurrentHashMap<>(); // key = tcp server address
+    private final List<LiveChunkServer> liveChunkServers = Collections.synchronizedList(new ArrayList<>());
 
     public Controller(int port) {
         tcpServer = new TcpServer(port, this);
@@ -70,29 +72,28 @@ public class Controller implements Node {
         String fileName = request.getFileName();
         int chunkSequence = request.getChunkSequence();
 
-        // find chunk servers that do not have a copy of the chunk
-        List<String> chunkServerAddresses = new ArrayList<>();
-        for (Map.Entry<String, LiveChunkServer> entry : liveChunkServers.entrySet()) {
-            String chunkServerAddress = entry.getKey();
-            LiveChunkServer liveChunkServer = entry.getValue();
-            if (!liveChunkServer.containsChunk(fileName, chunkSequence))
-                chunkServerAddresses.add(chunkServerAddress);
+        List<LiveChunkServer> validChunkServers;
+        synchronized (liveChunkServers) {
+            validChunkServers = liveChunkServers.stream()
+                .filter(lcs -> !lcs.containsChunk(fileName, chunkSequence))
+                .sorted(Comparator.comparingLong(LiveChunkServer::getUsableSpace).reversed())
+                .limit(REPLICATION_LEVEL)
+                .collect(Collectors.toList());
         }
 
-        // find 3 chunk servers with highest usable space
-        Collections.sort(chunkServerAddresses, new Comparator<String>() {
-            @Override
-            public int compare(String s1, String s2) {
-                long usableSpace1 = liveChunkServers.get(s1).getUsableSpace();
-                long usableSpace2 = liveChunkServers.get(s2).getUsableSpace();
-                return usableSpace1 < usableSpace2 ? -1 : usableSpace1 == usableSpace2 ? 0 : 1;
-            }
-        });
+        List<String> validServerAddresses = validChunkServers.stream()
+            .map(lcs -> lcs.getServerAddress())
+            .collect(Collectors.toList());
+
+        if (validServerAddresses.size() != REPLICATION_LEVEL) {
+            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers");
+            return;
+        }
 
         String sourceAddress = request.getSourceAddress();
         TcpConnection tcpConnection = connections.get(sourceAddress);
 
-        StoreChunkResponse response = new StoreChunkResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, chunkSequence, chunkServerAddresses);
+        StoreChunkResponse response = new StoreChunkResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, chunkSequence, validServerAddresses);
         try {
             tcpConnection.send(response.getBytes());
         }
@@ -104,8 +105,12 @@ public class Controller implements Node {
     private void handleMinorHeartbeat(Message message) {
         MinorHeartbeat heartbeat = (MinorHeartbeat) message;
         Utils.debug("received: " + heartbeat);
-        liveChunkServers.get(heartbeat.getServerAddress()).minorHeartbeatUpdate(heartbeat);
-        Utils.debug(liveChunkServers.get(heartbeat.getServerAddress()));
+        synchronized (liveChunkServers) {
+            liveChunkServers.stream()
+                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
+                .findFirst()
+                .ifPresent(lcs -> lcs.minorHeartbeatUpdate(heartbeat));
+        }
     }
 
     private void handleRegisterRequest(Message message) {
@@ -113,9 +118,13 @@ public class Controller implements Node {
         Utils.debug("received: " + request);
         String serverAddress = request.getServerAddress();
         String sourceAddress = request.getSourceAddress();
-        if (!liveChunkServers.containsKey(serverAddress)) {
-            liveChunkServers.put(serverAddress, new LiveChunkServer(connections.get(sourceAddress)));
-            Utils.debug("registering chunk server: " + serverAddress);
+        synchronized (liveChunkServers) {
+            boolean noneMatch = liveChunkServers.stream()
+                .noneMatch(lcs -> lcs.getServerAddress().equals(serverAddress));
+            if (noneMatch) {
+                liveChunkServers.add(new LiveChunkServer(connections.get(sourceAddress), serverAddress));
+                Utils.debug("registering chunk server: " + serverAddress);
+            }
         }
     }
 

@@ -17,8 +17,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkServer implements Node {
     private static final String TMP_DIR = "/tmp";
-    private static final long MINOR_HEARTBEAT_DELAY = 5 * 60 * 1000; // todo -- should be 30 seconds
-//    private static final long MAJOR_HEARTBEAT_DELAY = 30 * 1000; // todo -- should be 5 minutes
+    private static final String USER_NAME = System.getProperty("user.name");
+    private static final long MINOR_HEARTBEAT_DELAY = 30 * 1000; // 30 seconds
+    private static final long MAJOR_HEARTBEAT_DELAY = 5 * 60 * 1000; // 5 minutes
     private final int port;
     private final Path storageDir;
     private final TcpServer tcpServer;
@@ -28,7 +29,7 @@ public class ChunkServer implements Node {
 
     private ChunkServer(int port, String controllerIp, int controllerPort, String serverName) {
         this.port = port;
-        storageDir = Paths.get(TMP_DIR, "sgaxcell/chunkserver" + serverName);
+        storageDir = Paths.get(TMP_DIR, USER_NAME, "chunkserver" + serverName);
         tcpServer = new TcpServer(port, this);
         new Thread(tcpServer).start();
         Utils.sleep(500);
@@ -59,21 +60,20 @@ public class ChunkServer implements Node {
     public void onMessage(Message message) {
         int protocol = message.getProtocol();
         switch (protocol) {
-            case Protocol.STORE_CHUNK_REQUEST:
-                handleStoreChunkRequest(message);
+            case Protocol.STORE_CHUNK:
+                handleStoreChunk(message);
                 break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
     }
 
-    private void handleStoreChunkRequest(Message message) {
-        StoreChunk request = (StoreChunk) message;
-        Utils.debug("received: " + request);
+    private void handleStoreChunk(Message message) {
+        StoreChunk storeChunk = (StoreChunk) message;
+        Utils.debug("received: " + storeChunk);
 
-        // todo -- write chunk
-        String fileName = request.getFileName();
-        int sequence = request.getChunkSequence();
+        String fileName = storeChunk.getFileName();
+        int sequence = storeChunk.getChunkSequence();
         Path path = generateWritePath(fileName, sequence);
 
         Chunk chunk = new Chunk(fileName, sequence, path);
@@ -82,6 +82,7 @@ public class ChunkServer implements Node {
         List<Chunk> chunks = filesToChunks.get(fileName);
         if (!chunks.contains(chunk)) {
             synchronized (newChunks) {
+                Utils.debug("adding new chunk");
                 newChunks.add(chunk);
             }
             chunks.add(chunk);
@@ -89,8 +90,12 @@ public class ChunkServer implements Node {
         int idx = chunks.indexOf(chunk);
         chunk = chunks.get(idx);
 
-        byte[] chunkData = request.getFileData();
+        byte[] chunkData = storeChunk.getFileData();
         chunk.writeChunk(chunkData);
+
+        List<String> nextServers = storeChunk.getNextServers();
+        if (nextServers.isEmpty())
+            return;
 
         // todo -- forward chunk to next servers
     }
@@ -153,17 +158,14 @@ public class ChunkServer implements Node {
         return numChunks;
     }
 
-    private List<Chunk> getNewChunks() {
-        return newChunks;
-    }
-
     private class MinorHeartbeatTimerTask extends TimerTask {
         @Override
         public void run() {
             synchronized (newChunks) {
-                MinorHeartbeat heartbeat = new MinorHeartbeat(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), getUsableSpace(), getTotalNumberOfChunks(), getNewChunks());
-                newChunks.clear();
+                Utils.debug("newChunks.length: " + newChunks.size() + " : " + newChunks);
+                MinorHeartbeat heartbeat = new MinorHeartbeat(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), getUsableSpace(), getTotalNumberOfChunks(), newChunks);
                 sendMessageToController(heartbeat);
+                newChunks.clear();
             }
         }
     }

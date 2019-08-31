@@ -50,4 +50,8 @@ public class TcpConnection {
     public int getPort() {
         return socket.getLocalPort();
     }
+
+    public TcpSender getTcpSender() {
+        return tcpSender;
+    }
 }

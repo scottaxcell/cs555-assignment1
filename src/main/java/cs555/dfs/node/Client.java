@@ -1,20 +1,18 @@
 package cs555.dfs.node;
 
 import cs555.dfs.transport.TcpConnection;
+import cs555.dfs.transport.TcpSender;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.FileChunkifier;
 import cs555.dfs.util.Utils;
-import cs555.dfs.wireformats.Message;
-import cs555.dfs.wireformats.Protocol;
-import cs555.dfs.wireformats.StoreChunkRequest;
-import cs555.dfs.wireformats.StoreChunkResponse;
+import cs555.dfs.wireformats.*;
 
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -36,6 +34,7 @@ import java.util.regex.Pattern;
  */
 public class Client implements Node {
     private final TcpServer tcpServer;
+    private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>(); // key = remote socket address
     private TcpConnection controllerTcpConnection;
 
     public Client(String controllerIp, int controllerPort) {
@@ -68,6 +67,59 @@ public class Client implements Node {
     private void handleStoreChunkResponse(Message message) {
         StoreChunkResponse response = (StoreChunkResponse) message;
         Utils.debug("received: " + response);
+
+        int chunkSequence = response.getChunkSequence();
+        FileChunkifier.FileDataChunk fileDataChunk;
+        synchronized (currentFileDataChunks) {
+            if (currentFileDataChunks == null) {
+                Utils.error("currentFileDataChunks is null");
+                return;
+            }
+            FileChunkifier.FileDataChunk finderChunk = new FileChunkifier.FileDataChunk(chunkSequence);
+            int idx = currentFileDataChunks.indexOf(finderChunk);
+            if (idx == -1) {
+                Utils.error("fileDataChunks not found");
+                return;
+            }
+            fileDataChunk = currentFileDataChunks.get(idx);
+            currentFileDataChunks.remove(fileDataChunk);
+        }
+        List<String> chunkServerAddresses = response.getChunkServerAddresses();
+        String firstChunkServerAddress = chunkServerAddresses.get(0);
+
+        TcpSender tcpSender = null;
+        TcpConnection chunkServerTcpConnection = connections.get(firstChunkServerAddress);
+        if (chunkServerTcpConnection != null) {
+            tcpSender = chunkServerTcpConnection.getTcpSender();
+        }
+        else {
+            String[] splitServerAddress = Utils.splitServerAddress(chunkServerAddresses.get(0));
+            try {
+                Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
+                tcpSender = new TcpSender(socket);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (tcpSender == null) {
+            Utils.error("tcpServer is null");
+            return;
+        }
+
+        List<String> nextServers = new ArrayList<>();
+        nextServers.add(chunkServerAddresses.get(1));
+        nextServers.add(chunkServerAddresses.get(2));
+
+        StoreChunk storeChunk = new StoreChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
+            response.getFileName(), fileDataChunk.sequence, fileDataChunk.fileData, nextServers);
+        try {
+            tcpSender.send(storeChunk.getBytes());
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -77,7 +129,8 @@ public class Client implements Node {
 
     @Override
     public void registerNewTcpConnection(TcpConnection tcpConnection) {
-        // todo
+        connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
+        Utils.debug("registering tcp connection: " + tcpConnection.getRemoteSocketAddress());
     }
 
     @Override
@@ -118,46 +171,22 @@ public class Client implements Node {
         }
     }
 
+    private List<FileChunkifier.FileDataChunk> currentFileDataChunks;
+
     private void storeFile(Path path) {
         Utils.debug("storing file: " + Utils.getCanonicalPath(path));
 
-//        Socket socket = null;
-//        try {
-//            socket = new Socket("127.0.0.1", 11322);
-//        }
-//        catch (IOException e) {
-//            e.printStackTrace();
-//            System.exit(-1);
-//        }
-//        TcpConnection chunkServerTcpConnection = new TcpConnection(socket, this);
-//
-//        List<byte[]> bytes = FileChunkifier.chunkifyFile(path.toFile());
-//        int chunkSequence = 0;
-//        for (byte[] chunkData : bytes) {
-//            StoreChunkRequest request = new StoreChunkRequest(getServerAddress(), chunkServerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path), chunkSequence);
-//            try {
-//                chunkServerTcpConnection.send(request.getBytes());
-//            }
-//            catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            chunkSequence++;
-//        }
-        // todo -- chunkify file, then for each chunk do the following
-        // todo -- ask controller for chunk servers
-        // todo -- send chunk plus next servers to first server
-        // todo -- wait for response that chunk has been written from first server before next controller request
-        List<byte[]> bytes = FileChunkifier.chunkifyFile(path.toFile());
-        int chunkSequence = 0;
-        for (byte[] chunkData : bytes) {
-            StoreChunkRequest request = new StoreChunkRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path), chunkSequence);
-            try {
-                controllerTcpConnection.send(request.getBytes());
+        currentFileDataChunks = Collections.synchronizedList(FileChunkifier.chunkifyFileToFileDataChunks(path.toFile()));
+        synchronized (currentFileDataChunks) {
+            for (int i = 0; i < currentFileDataChunks.size(); i++) {
+                StoreChunkRequest request = new StoreChunkRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path), i);
+                try {
+                    controllerTcpConnection.send(request.getBytes());
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-            chunkSequence++;
         }
     }
 

@@ -6,19 +6,18 @@ import cs555.dfs.wireformats.Message;
 import cs555.dfs.wireformats.MinorHeartbeat;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class LiveChunkServer {
     private final TcpConnection tcpConnection;
+    private final String serverAddress;
     private Map<String, List<Chunk>> filesToChunks = new HashMap<>();
     private long usableSpace;
     private int totalNumberOfChunks;
 
-    public LiveChunkServer(TcpConnection tcpConnection) {
+    public LiveChunkServer(TcpConnection tcpConnection, String serverAddress) {
         this.tcpConnection = tcpConnection;
+        this.serverAddress = serverAddress;
     }
 
     public void minorHeartbeatUpdate(MinorHeartbeat heartbeat) {
@@ -43,6 +42,19 @@ public class LiveChunkServer {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        LiveChunkServer that = (LiveChunkServer) o;
+        return serverAddress.equals(that.serverAddress);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(serverAddress);
+    }
+
+    @Override
     public String toString() {
         return "LiveChunkServer{" +
             "tcpConnection=" + tcpConnection +
@@ -62,5 +74,9 @@ public class LiveChunkServer {
                 return true;
 
         return false;
+    }
+
+    public String getServerAddress() {
+        return serverAddress;
     }
 }
