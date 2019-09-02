@@ -7,7 +7,6 @@ import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -77,14 +76,14 @@ public class Controller implements Node {
         Utils.debug("received: " + request);
 
         String fileName = request.getFileName();
-        List<RetrieveFileResponse.WireChunk> wireChunks = new ArrayList<>();
+        List<WireChunk> wireChunks = new ArrayList<>();
         synchronized (liveChunkServers) {
             for (LiveChunkServer lcs : liveChunkServers) {
                 List<Chunk> chunks = lcs.getChunks(fileName);
                 if (chunks == null)
                     continue;
                 for (Chunk c : chunks) {
-                    RetrieveFileResponse.WireChunk wireChunk = new RetrieveFileResponse.WireChunk(fileName, c.getSequence(), lcs.getServerAddress());
+                    WireChunk wireChunk = new WireChunk(fileName, c.getSequence(), lcs.getServerAddress());
                     if (!wireChunks.contains(wireChunk))
                         wireChunks.add(wireChunk);
                 }
@@ -98,12 +97,7 @@ public class Controller implements Node {
         TcpConnection tcpConnection = connections.get(sourceAddress);
 
         RetrieveFileResponse response = new RetrieveFileResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, wireChunks);
-        try {
-            tcpConnection.send(response.getBytes());
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        tcpConnection.send(response.getBytes());
     }
 
     private void handleStoreChunkRequest(Message message) {
@@ -134,12 +128,7 @@ public class Controller implements Node {
         TcpConnection tcpConnection = connections.get(sourceAddress);
 
         StoreChunkResponse response = new StoreChunkResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, chunkSequence, validServerAddresses);
-        try {
-            tcpConnection.send(response.getBytes());
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        tcpConnection.send(response.getBytes());
     }
 
     private void handleMinorHeartbeat(Message message) {

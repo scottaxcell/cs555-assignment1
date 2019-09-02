@@ -14,10 +14,15 @@ public class TcpReceiver implements Runnable {
     private DataInputStream dataInputStream;
     private Node node;
 
-    public TcpReceiver(Socket socket, Node node) throws IOException {
+    public TcpReceiver(Socket socket, Node node) {
         this.socket = socket;
         this.node = node;
-        dataInputStream = new DataInputStream(socket.getInputStream());
+        try {
+            dataInputStream = new DataInputStream(socket.getInputStream());
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public Socket getSocket() {

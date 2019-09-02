@@ -3,7 +3,6 @@ package cs555.dfs.wireformats;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class RetrieveFileResponse implements Message {
     private MessageHeader messageHeader;
@@ -16,25 +15,25 @@ public class RetrieveFileResponse implements Message {
         this.wireChunks = wireChunks;
     }
 
-    public RetrieveFileResponse(byte[] bytes) throws IOException {
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-        DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+    public RetrieveFileResponse(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-        this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            fileName = WireformatUtils.deserializeString(dataInputStream);
+            int numWireChunks = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numWireChunks; i++) {
+                WireChunk wireChunk = WireChunk.deserialize(dataInputStream);
+                wireChunks.add(wireChunk);
+            }
 
-        int fileNameLength = dataInputStream.readInt();
-        byte[] fileNameBytes = new byte[fileNameLength];
-        dataInputStream.readFully(fileNameBytes, 0, fileNameLength);
-        fileName = new String(fileNameBytes);
-
-        int numWireChunks = dataInputStream.readInt();
-        for (int i = 0; i < numWireChunks; i++) {
-            WireChunk wireChunk = WireChunk.deserialize(dataInputStream);
-            wireChunks.add(wireChunk);
+            byteArrayInputStream.close();
+            dataInputStream.close();
         }
-
-        byteArrayInputStream.close();
-        dataInputStream.close();
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -43,28 +42,30 @@ public class RetrieveFileResponse implements Message {
     }
 
     @Override
-    public byte[] getBytes() throws IOException {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
+    public byte[] getBytes() {
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.write(messageHeader.getBytes());
+            WireformatUtils.serializeBytes(dataOutputStream, messageHeader.getBytes());
+            WireformatUtils.serializeString(dataOutputStream, fileName);
+            WireformatUtils.serializeInt(dataOutputStream, wireChunks.size());
+            for (WireChunk wireChunk : wireChunks)
+                wireChunk.serialize(dataOutputStream);
 
-        dataOutputStream.writeInt(fileName.length());
-        dataOutputStream.write(fileName.getBytes());
+            dataOutputStream.flush();
 
-        dataOutputStream.writeInt(wireChunks.size());
-        for (WireChunk wireChunk : wireChunks) {
-            wireChunk.serialize(dataOutputStream);
+            byte[] data = byteArrayOutputStream.toByteArray();
+
+            byteArrayOutputStream.close();
+            dataOutputStream.close();
+
+            return data;
         }
-
-        dataOutputStream.flush();
-
-        byte[] data = byteArrayOutputStream.toByteArray();
-
-        byteArrayOutputStream.close();
-        dataOutputStream.close();
-
-        return data;
+        catch (IOException e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
     }
 
     @Override
@@ -80,62 +81,4 @@ public class RetrieveFileResponse implements Message {
         return fileName;
     }
 
-    public static class WireChunk {
-        public final String fileName;
-        public final int sequence;
-        public final String serverAddress;
-
-        public WireChunk(String fileName, int sequence, String serverAddress) {
-            this.fileName = fileName;
-            this.sequence = sequence;
-            this.serverAddress = serverAddress;
-        }
-
-        public static WireChunk deserialize(DataInputStream dataInputStream) throws IOException {
-            int fileNameLength = dataInputStream.readInt();
-            byte[] fileNameBytes = new byte[fileNameLength];
-            dataInputStream.readFully(fileNameBytes);
-            String fileName = new String(fileNameBytes);
-
-            int sequence = dataInputStream.readInt();
-
-            int serverLength = dataInputStream.readInt();
-            byte[] serverBytes = new byte[serverLength];
-            dataInputStream.readFully(serverBytes);
-            String server = new String(serverBytes);
-
-            return new WireChunk(fileName, sequence, server);
-        }
-
-        public void serialize(DataOutputStream dataOutputStream) throws IOException {
-            dataOutputStream.writeInt(fileName.length());
-            dataOutputStream.write(fileName.getBytes());
-            dataOutputStream.writeInt(sequence);
-            dataOutputStream.writeInt(serverAddress.length());
-            dataOutputStream.write(serverAddress.getBytes());
-        }
-
-        @Override
-        public String toString() {
-            return "WireChunk{" +
-                "fileName='" + fileName + '\'' +
-                ", sequence=" + sequence +
-                ", serverAddress='" + serverAddress + '\'' +
-                '}';
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            WireChunk wireChunk = (WireChunk) o;
-            return sequence == wireChunk.sequence &&
-                fileName.equals(wireChunk.fileName);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(fileName, sequence);
-        }
-    }
 }

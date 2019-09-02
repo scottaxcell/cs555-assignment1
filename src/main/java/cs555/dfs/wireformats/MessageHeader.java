@@ -19,26 +19,28 @@ public class MessageHeader implements Message {
     }
 
     @Override
-    public byte[] getBytes() throws IOException {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
+    public byte[] getBytes() {
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.writeInt(getProtocol());
+            dataOutputStream.writeInt(getProtocol());
+            WireformatUtils.serializeString(dataOutputStream, serverAddress);
+            WireformatUtils.serializeString(dataOutputStream, sourceAddress);
 
-        dataOutputStream.writeInt(serverAddress.getBytes().length);
-        dataOutputStream.write(serverAddress.getBytes());
+            dataOutputStream.flush();
 
-        dataOutputStream.writeInt(sourceAddress.getBytes().length);
-        dataOutputStream.write(sourceAddress.getBytes());
+            byte[] data = byteArrayOutputStream.toByteArray();
 
-        dataOutputStream.flush();
+            byteArrayOutputStream.close();
+            dataOutputStream.close();
 
-        byte[] data = byteArrayOutputStream.toByteArray();
-
-        byteArrayOutputStream.close();
-        dataOutputStream.close();
-
-        return data;
+            return data;
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
     }
 
     public String getServerAddress() {
@@ -49,19 +51,10 @@ public class MessageHeader implements Message {
         return sourceAddress;
     }
 
-    public static MessageHeader deserialize(DataInputStream dataInputStream) throws IOException {
-        int protocol = dataInputStream.readInt();
-
-        int serverAddressLength = dataInputStream.readInt();
-        byte[] serverAddressBytes = new byte[serverAddressLength];
-        dataInputStream.readFully(serverAddressBytes);
-        String serverAddress = new String(serverAddressBytes);
-
-        int sourceAddressLength = dataInputStream.readInt();
-        byte[] sourceAddressBytes = new byte[sourceAddressLength];
-        dataInputStream.readFully(sourceAddressBytes);
-        String sourceAddress = new String(sourceAddressBytes);
-
+    public static MessageHeader deserialize(DataInputStream dataInputStream) {
+        int protocol = WireformatUtils.deserializeInt(dataInputStream);
+        String serverAddress = WireformatUtils.deserializeString(dataInputStream);
+        String sourceAddress = WireformatUtils.deserializeString(dataInputStream);
         return new MessageHeader(protocol, serverAddress, sourceAddress);
     }
 

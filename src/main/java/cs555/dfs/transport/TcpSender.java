@@ -18,11 +18,16 @@ public class TcpSender {
         }
     }
 
-    public synchronized void send(byte[] data) throws IOException {
-        int dataLength = data.length;
-        dataOutputStream.writeInt(dataLength);
-        dataOutputStream.write(data, 0, dataLength);
-        dataOutputStream.flush();
+    public synchronized void send(byte[] data) {
+        try {
+            int dataLength = data.length;
+            dataOutputStream.writeInt(dataLength);
+            dataOutputStream.write(data, 0, dataLength);
+            dataOutputStream.flush();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public Socket getSocket() {

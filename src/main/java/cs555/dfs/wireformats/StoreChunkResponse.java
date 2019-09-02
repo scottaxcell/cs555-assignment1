@@ -17,30 +17,27 @@ public class StoreChunkResponse implements Message {
         this.chunkServerAddresses = chunkServerAddresses;
     }
 
-    public StoreChunkResponse(byte[] bytes) throws IOException {
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-        DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+    public StoreChunkResponse(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-        this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            this.messageHeader = MessageHeader.deserialize(dataInputStream);
 
-        chunkSequence = dataInputStream.readInt();
+            chunkSequence = dataInputStream.readInt();
+            fileName = WireformatUtils.deserializeString(dataInputStream);
+            int numAddresses = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numAddresses; i++) {
+                String address = WireformatUtils.deserializeString(dataInputStream);
+                chunkServerAddresses.add(address);
+            }
 
-        int fileNameLength = dataInputStream.readInt();
-        byte[] fileNameBytes = new byte[fileNameLength];
-        dataInputStream.readFully(fileNameBytes, 0, fileNameLength);
-        fileName = new String(fileNameBytes);
-
-        int numAddresses = dataInputStream.readInt();
-        for (int i = 0; i < numAddresses; i++) {
-            int addressLength = dataInputStream.readInt();
-            byte[] addressBytes = new byte[addressLength];
-            dataInputStream.readFully(addressBytes, 0, addressLength);
-            String address = new String(addressBytes);
-            chunkServerAddresses.add(address);
+            byteArrayInputStream.close();
+            dataInputStream.close();
         }
-
-        byteArrayInputStream.close();
-        dataInputStream.close();
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -49,32 +46,38 @@ public class StoreChunkResponse implements Message {
     }
 
     @Override
-    public byte[] getBytes() throws IOException {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
+    public byte[] getBytes() {
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.write(messageHeader.getBytes());
+            dataOutputStream.write(messageHeader.getBytes());
 
-        dataOutputStream.writeInt(chunkSequence);
+            dataOutputStream.writeInt(chunkSequence);
 
-        dataOutputStream.writeInt(fileName.length());
-        dataOutputStream.write(fileName.getBytes());
+            dataOutputStream.writeInt(fileName.length());
+            dataOutputStream.write(fileName.getBytes());
 
-        int numAddresses = chunkServerAddresses.size();
-        dataOutputStream.writeInt(numAddresses);
-        for (String chunkServerAddress : chunkServerAddresses) {
-            dataOutputStream.writeInt(chunkServerAddress.length());
-            dataOutputStream.write(chunkServerAddress.getBytes());
+            int numAddresses = chunkServerAddresses.size();
+            dataOutputStream.writeInt(numAddresses);
+            for (String chunkServerAddress : chunkServerAddresses) {
+                dataOutputStream.writeInt(chunkServerAddress.length());
+                dataOutputStream.write(chunkServerAddress.getBytes());
+            }
+
+            dataOutputStream.flush();
+
+            byte[] data = byteArrayOutputStream.toByteArray();
+
+            byteArrayOutputStream.close();
+            dataOutputStream.close();
+
+            return data;
         }
-
-        dataOutputStream.flush();
-
-        byte[] data = byteArrayOutputStream.toByteArray();
-
-        byteArrayOutputStream.close();
-        dataOutputStream.close();
-
-        return data;
+        catch (IOException e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
     }
 
     @Override

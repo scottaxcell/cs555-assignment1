@@ -2,7 +2,6 @@ package cs555.dfs.transport;
 
 import cs555.dfs.node.Node;
 
-import java.io.IOException;
 import java.net.Socket;
 
 public class TcpConnection {
@@ -14,16 +13,12 @@ public class TcpConnection {
     public TcpConnection(Socket socket, Node node) {
         this.socket = socket;
         this.node = node;
-        try {
-            tcpReceiver = new TcpReceiver(socket, node);
-            Thread thread = new Thread(tcpReceiver);
-            thread.start();
 
-            tcpSender = new TcpSender(socket);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        tcpReceiver = new TcpReceiver(socket, node);
+        Thread thread = new Thread(tcpReceiver);
+        thread.start();
+
+        tcpSender = new TcpSender(socket);
     }
 
     public String getRemoteSocketAddress() {
@@ -39,12 +34,7 @@ public class TcpConnection {
     }
 
     public void send(byte[] data) {
-        try {
-            tcpSender.send(data);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        tcpSender.send(data);
     }
 
     public int getPort() {

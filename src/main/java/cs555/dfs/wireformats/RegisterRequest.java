@@ -9,14 +9,19 @@ public class RegisterRequest implements Message {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAdress);
     }
 
-    public RegisterRequest(byte[] bytes) throws IOException {
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-        DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+    public RegisterRequest(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-        this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            messageHeader = MessageHeader.deserialize(dataInputStream);
 
-        byteArrayInputStream.close();
-        dataInputStream.close();
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -25,19 +30,26 @@ public class RegisterRequest implements Message {
     }
 
     @Override
-    public byte[] getBytes() throws IOException {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
+    public byte[] getBytes() {
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.write(messageHeader.getBytes());
-        dataOutputStream.flush();
+            WireformatUtils.serializeBytes(dataOutputStream, messageHeader.getBytes());
 
-        byte[] data = byteArrayOutputStream.toByteArray();
+            dataOutputStream.flush();
 
-        byteArrayOutputStream.close();
-        dataOutputStream.close();
+            byte[] data = byteArrayOutputStream.toByteArray();
 
-        return data;
+            byteArrayOutputStream.close();
+            dataOutputStream.close();
+
+            return data;
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
     }
 
     @Override

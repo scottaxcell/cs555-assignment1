@@ -20,33 +20,29 @@ public class MinorHeartbeat implements Message {
         this.newChunks = newChunks;
     }
 
-    public MinorHeartbeat(byte[] bytes) throws IOException {
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-        DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+    public MinorHeartbeat(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-        this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            usableSpace = WireformatUtils.deserializeLong(dataInputStream);
+            totalNumberOfChunks = WireformatUtils.deserializeInt(dataInputStream);
+            int numNewChunks = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numNewChunks; i++) {
+                String fileName = WireformatUtils.deserializeString(dataInputStream);
+                int version = WireformatUtils.deserializeInt(dataInputStream);
+                int sequence = WireformatUtils.deserializeInt(dataInputStream);
+                long timeStampEpochSecond = WireformatUtils.deserializeLong(dataInputStream);
+                newChunks.add(new Chunk(fileName, version, sequence, Instant.ofEpochSecond(timeStampEpochSecond)));
+            }
 
-        usableSpace = dataInputStream.readLong();
-        totalNumberOfChunks = dataInputStream.readInt();
-
-        int numNewChunks = dataInputStream.readInt();
-        for (int i = 0; i < numNewChunks; i++) {
-            int fileNameLength = dataInputStream.readInt();
-            byte[] fileNameBytes = new byte[fileNameLength];
-            dataInputStream.readFully(fileNameBytes, 0, fileNameLength);
-            String fileName = new String(fileNameBytes);
-
-            int version = dataInputStream.readInt();
-
-            int sequence = dataInputStream.readInt();
-
-            long timeStampEpochSecond = dataInputStream.readLong();
-
-            newChunks.add(new Chunk(fileName, version, sequence, Instant.ofEpochSecond(timeStampEpochSecond)));
+            byteArrayInputStream.close();
+            dataInputStream.close();
         }
-
-        byteArrayInputStream.close();
-        dataInputStream.close();
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -55,36 +51,35 @@ public class MinorHeartbeat implements Message {
     }
 
     @Override
-    public byte[] getBytes() throws IOException {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
+    public byte[] getBytes() {
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.write(messageHeader.getBytes());
+            WireformatUtils.serializeBytes(dataOutputStream, messageHeader.getBytes());
+            WireformatUtils.serializeLong(dataOutputStream, usableSpace);
+            WireformatUtils.serializeInt(dataOutputStream, totalNumberOfChunks);
+            WireformatUtils.serializeInt(dataOutputStream, newChunks.size());
+            for (Chunk chunk : newChunks) {
+                WireformatUtils.serializeString(dataOutputStream, chunk.getFileName());
+                WireformatUtils.serializeInt(dataOutputStream, chunk.getVersion());
+                WireformatUtils.serializeInt(dataOutputStream, chunk.getSequence());
+                WireformatUtils.serializeLong(dataOutputStream, chunk.getTimeStamp().getEpochSecond());
+            }
 
-        dataOutputStream.writeLong(usableSpace);
+            dataOutputStream.flush();
 
-        dataOutputStream.writeInt(totalNumberOfChunks);
+            byte[] data = byteArrayOutputStream.toByteArray();
 
-        dataOutputStream.writeInt(newChunks.size());
-        for (Chunk chunk : newChunks) {
-            dataOutputStream.writeInt(chunk.getFileName().length());
-            dataOutputStream.write(chunk.getFileName().getBytes());
+            byteArrayOutputStream.close();
+            dataOutputStream.close();
 
-            dataOutputStream.writeInt(chunk.getVersion());
-
-            dataOutputStream.writeInt(chunk.getSequence());
-
-            dataOutputStream.writeLong(chunk.getTimeStamp().getEpochSecond());
+            return data;
         }
-
-        dataOutputStream.flush();
-
-        byte[] data = byteArrayOutputStream.toByteArray();
-
-        byteArrayOutputStream.close();
-        dataOutputStream.close();
-
-        return data;
+        catch (IOException e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
     }
 
     @Override

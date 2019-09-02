@@ -19,34 +19,28 @@ public class StoreChunk implements Message {
         this.nextServers = nextServers;
     }
 
-    public StoreChunk(byte[] bytes) throws IOException {
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-        DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+    public StoreChunk(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-        this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            this.messageHeader = MessageHeader.deserialize(dataInputStream);
 
-        chunkSequence = dataInputStream.readInt();
+            chunkSequence = dataInputStream.readInt();
+            fileName = WireformatUtils.deserializeString(dataInputStream);
+            fileData = WireformatUtils.deserializeBytes(dataInputStream);
+            int numServers = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numServers; i++) {
+                String server = WireformatUtils.deserializeString(dataInputStream);
+                nextServers.add(server);
+            }
 
-        int fileNameLength = dataInputStream.readInt();
-        byte[] fileNameBytes = new byte[fileNameLength];
-        dataInputStream.readFully(fileNameBytes, 0, fileNameLength);
-        fileName = new String(fileNameBytes);
-
-        int bytesLength = dataInputStream.readInt();
-        fileData = new byte[bytesLength];
-        dataInputStream.readFully(fileData, 0, bytesLength);
-
-        int numServers = dataInputStream.readInt();
-        for (int i = 0; i < numServers; i++) {
-            int serverLength = dataInputStream.readInt();
-            byte[] serverBytes = new byte[serverLength];
-            dataInputStream.readFully(serverBytes, 0, serverLength);
-            String server = new String(serverBytes);
-            nextServers.add(server);
+            byteArrayInputStream.close();
+            dataInputStream.close();
         }
-
-        byteArrayInputStream.close();
-        dataInputStream.close();
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -55,34 +49,40 @@ public class StoreChunk implements Message {
     }
 
     @Override
-    public byte[] getBytes() throws IOException {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
+    public byte[] getBytes() {
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.write(messageHeader.getBytes());
+            dataOutputStream.write(messageHeader.getBytes());
 
-        dataOutputStream.writeInt(chunkSequence);
+            dataOutputStream.writeInt(chunkSequence);
 
-        dataOutputStream.writeInt(fileName.length());
-        dataOutputStream.write(fileName.getBytes());
+            dataOutputStream.writeInt(fileName.length());
+            dataOutputStream.write(fileName.getBytes());
 
-        dataOutputStream.writeInt(fileData.length);
-        dataOutputStream.write(fileData);
+            dataOutputStream.writeInt(fileData.length);
+            dataOutputStream.write(fileData);
 
-        dataOutputStream.writeInt(nextServers.size());
-        for (String server : nextServers) {
-            dataOutputStream.writeInt(server.length());
-            dataOutputStream.write(server.getBytes());
+            dataOutputStream.writeInt(nextServers.size());
+            for (String server : nextServers) {
+                dataOutputStream.writeInt(server.length());
+                dataOutputStream.write(server.getBytes());
+            }
+
+            dataOutputStream.flush();
+
+            byte[] data = byteArrayOutputStream.toByteArray();
+
+            byteArrayOutputStream.close();
+            dataOutputStream.close();
+
+            return data;
         }
-
-        dataOutputStream.flush();
-
-        byte[] data = byteArrayOutputStream.toByteArray();
-
-        byteArrayOutputStream.close();
-        dataOutputStream.close();
-
-        return data;
+        catch (IOException e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
     }
 
     @Override

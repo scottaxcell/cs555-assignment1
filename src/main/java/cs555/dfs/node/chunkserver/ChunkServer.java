@@ -133,12 +133,7 @@ public class ChunkServer implements Node {
 
         StoreChunk forwardStoreChunk = new StoreChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
             fileName, sequence, chunkData, nextNextServers);
-        try {
-            tcpSender.send(forwardStoreChunk.getBytes());
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        tcpSender.send(forwardStoreChunk.getBytes());
     }
 
     private Path generateWritePath(String fileName, int chunkSequence) {
@@ -184,12 +179,7 @@ public class ChunkServer implements Node {
     }
 
     private void sendMessageToController(Message message) {
-        try {
-            controllerTcpConnection.send(message.getBytes());
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        controllerTcpConnection.send(message.getBytes());
     }
 
     private int getTotalNumberOfChunks() {

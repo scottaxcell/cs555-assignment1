@@ -5,35 +5,32 @@ import java.io.*;
 public class RetrieveChunk implements Message {
     private MessageHeader messageHeader;
     private String fileName;
-    private int chunkSequence;
+    private int sequence;
     private byte[] fileData;
 
-    public RetrieveChunk(String serverAddress, String sourceAddress, String fileName, int chunkSequence, byte[] fileData) {
+    public RetrieveChunk(String serverAddress, String sourceAddress, String fileName, int sequence, byte[] fileData) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.fileName = fileName;
-        this.chunkSequence = chunkSequence;
+        this.sequence = sequence;
         this.fileData = fileData;
     }
 
-    public RetrieveChunk(byte[] bytes) throws IOException {
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-        DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+    public RetrieveChunk(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-        this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            sequence = WireformatUtils.deserializeInt(dataInputStream);
+            fileName = WireformatUtils.deserializeString(dataInputStream);
+            fileData = WireformatUtils.deserializeBytes(dataInputStream);
 
-        chunkSequence = dataInputStream.readInt();
-
-        int fileNameLength = dataInputStream.readInt();
-        byte[] fileNameBytes = new byte[fileNameLength];
-        dataInputStream.readFully(fileNameBytes, 0, fileNameLength);
-        fileName = new String(fileNameBytes);
-
-        int bytesLength = dataInputStream.readInt();
-        fileData = new byte[bytesLength];
-        dataInputStream.readFully(fileData, 0, bytesLength);
-
-        byteArrayInputStream.close();
-        dataInputStream.close();
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -42,28 +39,29 @@ public class RetrieveChunk implements Message {
     }
 
     @Override
-    public byte[] getBytes() throws IOException {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
+    public byte[] getBytes() {
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-        dataOutputStream.write(messageHeader.getBytes());
+            WireformatUtils.serializeBytes(dataOutputStream, messageHeader.getBytes());
+            WireformatUtils.serializeInt(dataOutputStream, sequence);
+            WireformatUtils.serializeString(dataOutputStream, fileName);
+            WireformatUtils.serializeBytes(dataOutputStream, fileData);
 
-        dataOutputStream.writeInt(chunkSequence);
+            dataOutputStream.flush();
 
-        dataOutputStream.writeInt(fileName.length());
-        dataOutputStream.write(fileName.getBytes());
+            byte[] data = byteArrayOutputStream.toByteArray();
 
-        dataOutputStream.writeInt(fileData.length);
-        dataOutputStream.write(fileData);
+            byteArrayOutputStream.close();
+            dataOutputStream.close();
 
-        dataOutputStream.flush();
-
-        byte[] data = byteArrayOutputStream.toByteArray();
-
-        byteArrayOutputStream.close();
-        dataOutputStream.close();
-
-        return data;
+            return data;
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
     }
 
     @Override
@@ -71,7 +69,7 @@ public class RetrieveChunk implements Message {
         return "RetrieveChunk{" +
             "messageHeader=" + messageHeader +
             ", fileName='" + fileName + '\'' +
-            ", chunkSequence=" + chunkSequence +
+            ", sequence=" + sequence +
             ", fileData.length=" + fileData.length +
             '}';
     }
@@ -80,8 +78,8 @@ public class RetrieveChunk implements Message {
         return fileName;
     }
 
-    public int getChunkSequence() {
-        return chunkSequence;
+    public int getSequence() {
+        return sequence;
     }
 
     public byte[] getFileData() {

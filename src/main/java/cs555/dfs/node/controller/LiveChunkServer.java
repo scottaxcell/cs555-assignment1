@@ -6,7 +6,6 @@ import cs555.dfs.wireformats.MajorHeartbeat;
 import cs555.dfs.wireformats.Message;
 import cs555.dfs.wireformats.MinorHeartbeat;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -50,12 +49,7 @@ public class LiveChunkServer {
     }
 
     public void sendMessage(Message message) {
-        try {
-            tcpConnection.send(message.getBytes());
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        tcpConnection.send(message.getBytes());
     }
 
     @Override

@@ -124,12 +124,7 @@ public class Client implements Node {
 
         StoreChunk storeChunk = new StoreChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
             fileName, fileDataChunk.sequence, fileDataChunk.fileData, nextServers);
-        try {
-            tcpSender.send(storeChunk.getBytes());
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        tcpSender.send(storeChunk.getBytes());
 
         sendNextStoreChunkRequest();
     }
@@ -199,12 +194,7 @@ public class Client implements Node {
 
     private void retrieveFile(Path path) {
         RetrieveFileRequest request = new RetrieveFileRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path));
-        try {
-            controllerTcpConnection.send(request.getBytes());
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        controllerTcpConnection.send(request.getBytes());
     }
 
     private void storeFile(Path path) {
@@ -222,12 +212,7 @@ public class Client implements Node {
                 FileChunkifier.FileDataChunk fileDataChunk = currentFileDataChunks.get(0);
                 StoreChunkRequest request = new StoreChunkRequest(getServerAddress(),
                     controllerTcpConnection.getLocalSocketAddress(), fileDataChunk.fileName, fileDataChunk.sequence);
-                try {
-                    controllerTcpConnection.send(request.getBytes());
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
+                controllerTcpConnection.send(request.getBytes());
             }
         }
     }
