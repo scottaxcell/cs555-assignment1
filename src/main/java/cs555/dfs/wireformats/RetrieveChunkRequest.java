@@ -1,32 +1,26 @@
 package cs555.dfs.wireformats;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
 
-public class RetrieveFileResponse implements Message {
+public class RetrieveChunkRequest implements Message {
     private MessageHeader messageHeader;
     private String fileName;
-    private List<WireChunk> wireChunks = new ArrayList<>();
+    private int sequence;
 
-    public RetrieveFileResponse(String serverAddress, String sourceAddress, String fileName, List<WireChunk> wireChunks) {
+    public RetrieveChunkRequest(String serverAddress, String sourceAddress, String fileName, int sequence) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.fileName = fileName;
-        this.wireChunks = wireChunks;
+        this.sequence = sequence;
     }
 
-    public RetrieveFileResponse(byte[] bytes) {
+    public RetrieveChunkRequest(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
             this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            sequence = WireformatUtils.deserializeInt(dataInputStream);
             fileName = WireformatUtils.deserializeString(dataInputStream);
-            int numWireChunks = WireformatUtils.deserializeInt(dataInputStream);
-            for (int i = 0; i < numWireChunks; i++) {
-                WireChunk wireChunk = WireChunk.deserialize(dataInputStream);
-                wireChunks.add(wireChunk);
-            }
 
             byteArrayInputStream.close();
             dataInputStream.close();
@@ -38,7 +32,7 @@ public class RetrieveFileResponse implements Message {
 
     @Override
     public int getProtocol() {
-        return Protocol.RETRIEVE_FILE_RESPONSE;
+        return Protocol.RETRIEVE_CHUNK_REQUEST;
     }
 
     @Override
@@ -48,10 +42,8 @@ public class RetrieveFileResponse implements Message {
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
             WireformatUtils.serializeBytes(dataOutputStream, messageHeader.getBytes());
+            WireformatUtils.serializeInt(dataOutputStream, sequence);
             WireformatUtils.serializeString(dataOutputStream, fileName);
-            WireformatUtils.serializeInt(dataOutputStream, wireChunks.size());
-            for (WireChunk wireChunk : wireChunks)
-                wireChunk.serialize(dataOutputStream);
 
             dataOutputStream.flush();
 
@@ -70,10 +62,10 @@ public class RetrieveFileResponse implements Message {
 
     @Override
     public String toString() {
-        return "RetrieveFileResponse{" +
+        return "RetrieveChunkRequest{" +
             "messageHeader=" + messageHeader +
             ", fileName='" + fileName + '\'' +
-            ", wireChunks=" + wireChunks +
+            ", sequence=" + sequence +
             '}';
     }
 
@@ -81,7 +73,7 @@ public class RetrieveFileResponse implements Message {
         return fileName;
     }
 
-    public List<WireChunk> getWireChunks() {
-        return wireChunks;
+    public int getSequence() {
+        return sequence;
     }
 }

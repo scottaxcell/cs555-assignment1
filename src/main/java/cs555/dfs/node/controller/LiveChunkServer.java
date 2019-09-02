@@ -41,7 +41,7 @@ public class LiveChunkServer {
         filesToChunks.clear();
         List<Chunk> chunks = heartbeat.getChunks();
         for (Chunk chunk : chunks)
-            filesToChunks.computeIfAbsent(chunk.getFileName(), c -> new ArrayList<>());
+            filesToChunks.computeIfAbsent(chunk.getFileName(), c -> new ArrayList<>()).add(chunk);
     }
 
     public long getUsableSpace() {

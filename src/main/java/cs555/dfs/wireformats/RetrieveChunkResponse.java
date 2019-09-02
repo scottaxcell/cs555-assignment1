@@ -2,20 +2,20 @@ package cs555.dfs.wireformats;
 
 import java.io.*;
 
-public class RetrieveChunk implements Message {
+public class RetrieveChunkResponse implements Message {
     private MessageHeader messageHeader;
     private String fileName;
     private int sequence;
     private byte[] fileData;
 
-    public RetrieveChunk(String serverAddress, String sourceAddress, String fileName, int sequence, byte[] fileData) {
+    public RetrieveChunkResponse(String serverAddress, String sourceAddress, String fileName, int sequence, byte[] fileData) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.fileName = fileName;
         this.sequence = sequence;
         this.fileData = fileData;
     }
 
-    public RetrieveChunk(byte[] bytes) {
+    public RetrieveChunkResponse(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
@@ -35,7 +35,7 @@ public class RetrieveChunk implements Message {
 
     @Override
     public int getProtocol() {
-        return Protocol.RETRIEVE_CHUNK_REQUEST;
+        return Protocol.RETRIEVE_CHUNK_RESPONSE;
     }
 
     @Override
@@ -66,7 +66,7 @@ public class RetrieveChunk implements Message {
 
     @Override
     public String toString() {
-        return "RetrieveChunk{" +
+        return "RetrieveChunkResponse{" +
             "messageHeader=" + messageHeader +
             ", fileName='" + fileName + '\'' +
             ", sequence=" + sequence +

@@ -38,6 +38,7 @@ public class Client implements Node {
     private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>(); // key = remote socket address
     private TcpConnection controllerTcpConnection;
     private List<FileChunkifier.FileDataChunk> currentFileDataChunks = new ArrayList<>();
+    private List<WireChunk> currentWireChunks = new ArrayList<>();
 
     public Client(String controllerIp, int controllerPort) {
         tcpServer = new TcpServer(0, this);
@@ -64,14 +65,62 @@ public class Client implements Node {
             case Protocol.RETRIEVE_FILE_RESPONSE:
                 handleRetrieveFileResponse(message);
                 break;
+            case Protocol.RETRIEVE_CHUNK_RESPONSE:
+                handleRetrieveChunkResponse(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
     }
 
+    private void handleRetrieveChunkResponse(Message message) {
+        RetrieveFileResponse response = (RetrieveFileResponse) message;
+        Utils.debug("received: " + response);
+    }
+
     private void handleRetrieveFileResponse(Message message) {
         RetrieveFileResponse response = (RetrieveFileResponse) message;
         Utils.debug("received: " + response);
+
+        synchronized (currentWireChunks) {
+            currentWireChunks = response.getWireChunks();
+            if (currentWireChunks.isEmpty())
+                return;
+
+            WireChunk wireChunk = currentWireChunks.get(0);
+            String fileName = wireChunk.getFileName();
+            int sequence = wireChunk.getSequence();
+            String serverAddress = wireChunk.getServerAddress();
+
+            TcpSender tcpSender = getTcpSenderFromServerAddress(serverAddress);
+            if (tcpSender == null) {
+                Utils.error("tcpServer is null");
+                return;
+            }
+
+            RetrieveChunkRequest request = new RetrieveChunkRequest(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
+                fileName, sequence);
+            tcpSender.send(request.getBytes());
+
+            currentWireChunks.remove(wireChunk);
+        }
+    }
+
+    private TcpSender getTcpSenderFromServerAddress(String serverAddress) {
+        TcpConnection tcpConnection = connections.get(serverAddress);
+        if (tcpConnection != null)
+            return tcpConnection.getTcpSender();
+        else {
+            String[] splitServerAddress = Utils.splitServerAddress(serverAddress);
+            try {
+                Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
+                return new TcpSender(socket);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
     }
 
     private void handleStoreChunkResponse(Message message) {
@@ -82,10 +131,6 @@ public class Client implements Node {
         int chunkSequence = response.getChunkSequence();
         FileChunkifier.FileDataChunk fileDataChunk;
         synchronized (currentFileDataChunks) {
-            if (currentFileDataChunks == null) {
-                Utils.error("currentFileDataChunks is null");
-                return;
-            }
             FileChunkifier.FileDataChunk finderChunk = new FileChunkifier.FileDataChunk(fileName, chunkSequence);
             int idx = currentFileDataChunks.indexOf(finderChunk);
             if (idx == -1) {
@@ -98,22 +143,7 @@ public class Client implements Node {
         List<String> chunkServerAddresses = response.getChunkServerAddresses();
         String firstChunkServerAddress = chunkServerAddresses.get(0);
 
-        TcpSender tcpSender = null;
-        TcpConnection chunkServerTcpConnection = connections.get(firstChunkServerAddress);
-        if (chunkServerTcpConnection != null) {
-            tcpSender = chunkServerTcpConnection.getTcpSender();
-        }
-        else {
-            String[] splitServerAddress = Utils.splitServerAddress(chunkServerAddresses.get(0));
-            try {
-                Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
-                tcpSender = new TcpSender(socket);
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
+        TcpSender tcpSender = getTcpSenderFromServerAddress(firstChunkServerAddress);
         if (tcpSender == null) {
             Utils.error("tcpServer is null");
             return;
@@ -172,6 +202,7 @@ public class Client implements Node {
             if (input.startsWith("rf")) {
                 // todo -- turn on ask for file
                 // todo -- wait for file to write before giving back command line prompt
+                // todo -- ask for output path
 //                Utils.out("fileName: \n");
 //                String fileName = scanner.next();
                 String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.bin";

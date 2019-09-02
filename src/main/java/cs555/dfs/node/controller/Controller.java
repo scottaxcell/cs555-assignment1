@@ -120,7 +120,7 @@ public class Controller implements Node {
             .collect(Collectors.toList());
 
         if (validServerAddresses.size() != REPLICATION_LEVEL) {
-            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers");
+            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers, found " + validServerAddresses.size());
             return;
         }
 

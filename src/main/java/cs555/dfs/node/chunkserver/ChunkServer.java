@@ -67,9 +67,17 @@ public class ChunkServer implements Node {
             case Protocol.STORE_CHUNK:
                 handleStoreChunk(message);
                 break;
+            case Protocol.RETRIEVE_CHUNK_REQUEST:
+                handleRetrieveChunkRequest(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
+    }
+
+    private void handleRetrieveChunkRequest(Message message) {
+        RetrieveChunkRequest request = (RetrieveChunkRequest) message;
+        Utils.debug("received: " + request);
     }
 
     private void handleStoreChunk(Message message) {

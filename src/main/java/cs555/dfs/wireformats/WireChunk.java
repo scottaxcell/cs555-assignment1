@@ -50,4 +50,16 @@ public class WireChunk {
     public int hashCode() {
         return Objects.hash(fileName, sequence);
     }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public int getSequence() {
+        return sequence;
+    }
+
+    public String getServerAddress() {
+        return serverAddress;
+    }
 }
