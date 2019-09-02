@@ -90,7 +90,7 @@ public class MajorHeartbeat implements Message {
 
     @Override
     public String toString() {
-        return "MinorHeartbeat{" +
+        return "MajorHeartbeat{" +
             "messageHeader=" + messageHeader +
             ", usableSpace=" + usableSpace +
             ", totalNumberOfChunks=" + totalNumberOfChunks +

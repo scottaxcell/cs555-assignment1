@@ -61,7 +61,7 @@ public class FileChunkifier {
         }
     }
 
-    public static byte[] convertByteArrayListToByteArray(List<byte[]> byteArrayList) {
+    private static byte[] convertByteArrayListToByteArray(List<byte[]> byteArrayList) {
         int numBytes = 0;
         for (byte[] b : byteArrayList)
             numBytes += b.length;
@@ -72,6 +72,42 @@ public class FileChunkifier {
             chunkSequence++;
         }
         return bytes;
+    }
+
+
+    private static final int SLICE_SIZE = 8 * 1024; // 8 KB
+
+    public static List<byte[]> sliceFileData(byte[] fileData) {
+        List<byte[]> slices = new ArrayList<>();
+
+        long numSlices = fileData.length / SLICE_SIZE;
+        Utils.debug("numSlices: " + numSlices);
+        int remainderSlice = (fileData.length % SLICE_SIZE);
+        Utils.debug("remainderSlice size: " + remainderSlice);
+
+        int chunkSequence = 0;
+        for (; chunkSequence < numSlices; chunkSequence++) {
+            byte[] slice = new byte[SLICE_SIZE];
+            System.arraycopy(fileData, chunkSequence * SLICE_SIZE, slice, 0, SLICE_SIZE);
+            slices.add(slice);
+        }
+        if (remainderSlice > 0) {
+            byte[] slice = new byte[remainderSlice];
+            System.arraycopy(fileData, chunkSequence * SLICE_SIZE, slice, 0, remainderSlice);
+            slices.add(slice);
+        }
+
+        return slices;
+    }
+
+    public static List<String> createSliceChecksums(byte[] fileData) {
+        List<String> checksums = new ArrayList<>();
+        List<byte[]> slices = FileChunkifier.sliceFileData(fileData);
+        for (byte[] slice : slices) {
+            String sha1FromBytes = Utils.createSha1FromBytes(slice);
+            checksums.add(sha1FromBytes);
+        }
+        return checksums;
     }
 
     public static void main(String[] args) {
@@ -94,6 +130,16 @@ public class FileChunkifier {
         }
         catch (IOException e) {
             e.printStackTrace();
+        }
+
+        // checksumming some slices bro
+        randomBytes = new byte[CHUNK_SIZE * 11];
+        new Random().nextBytes(randomBytes);
+        Utils.debug("randomBytes.length: " + randomBytes.length);
+        List<String> sliceChecksums = createSliceChecksums(randomBytes);
+        Utils.debug("sliceChecksums.size: " + sliceChecksums.size());
+        for (String checksum : sliceChecksums) {
+            Utils.debug(checksum);
         }
     }
 

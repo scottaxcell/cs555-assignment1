@@ -5,6 +5,7 @@ import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpSender;
 import cs555.dfs.transport.TcpServer;
+import cs555.dfs.util.FileChunkifier;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
 
@@ -72,44 +73,6 @@ public class ChunkServer implements Node {
         }
     }
 
-    private List<String> createChunkChecksums(byte[] fileData) {
-        List<String> checksums = new ArrayList<>();
-        Utils.debug("fileData.length: " + fileData.length);
-//        Utils.createSha1FromBytes()
-        List<byte[]> bytes = chunkifyFile(fileData);
-        for (byte[] b : bytes) {
-            String sha1FromBytes = Utils.createSha1FromBytes(b);
-            Utils.debug(sha1FromBytes);
-            checksums.add(sha1FromBytes);
-        }
-        return checksums;
-    }
-
-    private static final int CHUNK_SIZE = 8 * 1024; // 8 KB
-
-    public static List<byte[]> chunkifyFile(byte[] fileData) {
-        List<byte[]> bytes = new ArrayList<>();
-
-        long numChunks = fileData.length / CHUNK_SIZE;
-        Utils.debug("numChunks: " + numChunks);
-        int remainderChunk = (int) (fileData.length % CHUNK_SIZE);
-        Utils.debug("remainderChunk size: " + remainderChunk);
-
-        int chunkSequence = 0;
-        for (; chunkSequence < numChunks; chunkSequence++) {
-            byte[] b = new byte[CHUNK_SIZE];
-            System.arraycopy(fileData, chunkSequence * CHUNK_SIZE, b, 0, CHUNK_SIZE);
-            bytes.add(b);
-        }
-        if (remainderChunk > 0) {
-            byte[] b = new byte[remainderChunk];
-            System.arraycopy(fileData, chunkSequence * CHUNK_SIZE, b, 0, remainderChunk);
-            bytes.add(b);
-        }
-
-        return bytes;
-    }
-
     private void handleStoreChunk(Message message) {
         StoreChunk storeChunk = (StoreChunk) message;
         Utils.debug("received: " + storeChunk);
@@ -134,7 +97,7 @@ public class ChunkServer implements Node {
 
         byte[] chunkData = storeChunk.getFileData();
 
-        List<String> checksums = createChunkChecksums(chunkData);
+        List<String> checksums = FileChunkifier.createSliceChecksums(chunkData);
         chunk.setChecksum(checksums);
 
         chunk.writeChunk(chunkData);

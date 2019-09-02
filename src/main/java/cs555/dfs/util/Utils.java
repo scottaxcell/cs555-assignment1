@@ -76,6 +76,7 @@ public class Utils {
         }
         catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
+            return "";
         }
         byte[] hash = digest.digest(data);
         BigInteger hashInt = new BigInteger(1, hash);

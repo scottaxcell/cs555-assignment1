@@ -63,9 +63,17 @@ public class Controller implements Node {
             case Protocol.STORE_CHUNK_REQUEST:
                 handleStoreChunkRequest(message);
                 break;
+            case Protocol.RETRIEVE_FILE_REQUEST:
+                handleRetrieveFileRequest(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
+    }
+
+    private void handleRetrieveFileRequest(Message message) {
+        RetrieveFileRequest request = (RetrieveFileRequest) message;
+        Utils.debug("received: " + request);
     }
 
     private void handleStoreChunkRequest(Message message) {

@@ -166,6 +166,19 @@ public class Client implements Node {
                 }
                 storeFile(path);
             }
+            if (input.startsWith("rf")) {
+                // todo -- turn on ask for file
+                // todo -- wait for file to write before giving back command line prompt
+//                Utils.out("fileName: \n");
+//                String fileName = scanner.next();
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.bin";
+                Path path = Paths.get(fileName);
+                if (!path.toFile().exists()) {
+                    Utils.out("file does not exist: " + path + "\n");
+                    continue;
+                }
+                retrieveFile(path);
+            }
             else if (input.startsWith("pm")) {
                 printMenu();
             }
@@ -173,6 +186,16 @@ public class Client implements Node {
                 Utils.out("goodbye\n");
                 System.exit(0);
             }
+        }
+    }
+
+    private void retrieveFile(Path path) {
+        RetrieveFileRequest request = new RetrieveFileRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path));
+        try {
+            controllerTcpConnection.send(request.getBytes());
+        }
+        catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

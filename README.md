@@ -6,6 +6,10 @@ Building a distributed, replicated, and fault tolerant path system
 * ~~can i remove the socket from the messages and create constructors that take serialized data~~
 * ~~create run script to launch controller, chunk servers, and client for easier testing~~
 * ~~add temp testing command line handling for easier testing~~
+#### Code cleanup
+* standardize serialization and deserialization api to be shared among wireformats
+* improve small classes for grouping chunk info together FileDataChunk, WireChunk, etc.
+
 
 ### Controller
 * use chunk server free-space to determine applicable nodes
@@ -14,19 +18,19 @@ Building a distributed, replicated, and fault tolerant path system
 
 
 ### Chunk server
-* minor heartbeat -- notify of newly added chunks
-* major heartbeat -- metadata about all the chunks
-* all heartbeats -- total number of chunks and free-space
+* ~~minor heartbeat -- notify of newly added chunks~~
+* ~~major heartbeat -- metadata about all the chunks~~
+* ~~all heartbeats -- total number of chunks and free-space~~
 * report path corruption to controller
 * add error detection by hashing on reads and writes
-* write metadata to header of file data being written per chunk
-* refresh state by reading from disk on initialization
+* write metadata to header of file data being written per chunk ?
+* refresh state by reading from disk on initialization ?
 
 
 ### Client
-* ask controller for chunk servers to write chunk to
+* ~~ask controller for chunk servers to write chunk to~~
 * ~~chunkify path~~
-* send chunk to first chunk server -- append next chunk servers
+* ~~send chunk to first chunk server -- append next chunk servers~~
 * ~~read in path from command line~~
 * reed solomonize chunks
 
