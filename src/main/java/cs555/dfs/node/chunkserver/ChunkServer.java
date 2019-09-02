@@ -22,8 +22,7 @@ import java.util.stream.Collectors;
 public class ChunkServer implements Node {
     private static final String TMP_DIR = "/tmp";
     private static final String USER_NAME = System.getProperty("user.name");
-    private static final long MINOR_HEARTBEAT_DELAY = 30 * 1000; // 30 seconds
-    private static final long MAJOR_HEARTBEAT_DELAY = 5 * 60 * 1000; // 5 minutes
+    private static final long MINOR_HEARTBEAT_DELAY = 3000; // todo 3 * 1000; // 30 seconds
     private final int port;
     private final Path storageDir;
     private final TcpServer tcpServer;

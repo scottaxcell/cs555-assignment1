@@ -26,6 +26,8 @@ public class MessageFactory {
                 return new MajorHeartbeat(data);
             case Protocol.RETRIEVE_FILE_REQUEST:
                 return new RetrieveFileRequest(data);
+            case Protocol.RETRIEVE_FILE_RESPONSE:
+                return new RetrieveFileResponse(data);
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }

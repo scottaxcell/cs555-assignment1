@@ -1,5 +1,6 @@
 package cs555.dfs.node.controller;
 
+import cs555.dfs.node.Chunk;
 import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpServer;
@@ -74,6 +75,35 @@ public class Controller implements Node {
     private void handleRetrieveFileRequest(Message message) {
         RetrieveFileRequest request = (RetrieveFileRequest) message;
         Utils.debug("received: " + request);
+
+        String fileName = request.getFileName();
+        List<RetrieveFileResponse.WireChunk> wireChunks = new ArrayList<>();
+        synchronized (liveChunkServers) {
+            for (LiveChunkServer lcs : liveChunkServers) {
+                List<Chunk> chunks = lcs.getChunks(fileName);
+                if (chunks == null)
+                    continue;
+                for (Chunk c : chunks) {
+                    RetrieveFileResponse.WireChunk wireChunk = new RetrieveFileResponse.WireChunk(fileName, c.getSequence(), lcs.getServerAddress());
+                    if (!wireChunks.contains(wireChunk))
+                        wireChunks.add(wireChunk);
+                }
+            }
+        }
+
+        if (wireChunks.isEmpty())
+            return;
+
+        String sourceAddress = request.getSourceAddress();
+        TcpConnection tcpConnection = connections.get(sourceAddress);
+
+        RetrieveFileResponse response = new RetrieveFileResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, wireChunks);
+        try {
+            tcpConnection.send(response.getBytes());
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void handleStoreChunkRequest(Message message) {

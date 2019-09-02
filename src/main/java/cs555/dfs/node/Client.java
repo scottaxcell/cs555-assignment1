@@ -61,9 +61,17 @@ public class Client implements Node {
             case Protocol.STORE_CHUNK_RESPONSE:
                 handleStoreChunkResponse(message);
                 break;
+            case Protocol.RETRIEVE_FILE_RESPONSE:
+                handleRetrieveFileResponse(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
+    }
+
+    private void handleRetrieveFileResponse(Message message) {
+        RetrieveFileResponse response = (RetrieveFileResponse) message;
+        Utils.debug("received: " + response);
     }
 
     private void handleStoreChunkResponse(Message message) {

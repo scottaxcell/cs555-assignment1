@@ -9,7 +9,7 @@ Building a distributed, replicated, and fault tolerant path system
 #### Code cleanup
 * standardize serialization and deserialization api to be shared among wireformats
 * improve small classes for grouping chunk info together FileDataChunk, WireChunk, etc.
-
+* improve try catch blocks by pushing them down
 
 ### Controller
 * use chunk server free-space to determine applicable nodes

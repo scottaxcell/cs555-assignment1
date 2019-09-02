@@ -86,6 +86,7 @@ public class Chunk {
     }
 
     public Instant getTimeStamp() {
+        // todo this can return null if chunk not written yet, fix this
         return timeStamp;
     }
 

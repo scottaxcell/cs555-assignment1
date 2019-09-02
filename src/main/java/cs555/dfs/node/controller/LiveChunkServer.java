@@ -96,4 +96,8 @@ public class LiveChunkServer {
     public String getServerAddress() {
         return serverAddress;
     }
+
+    public List<Chunk> getChunks(String fileName) {
+        return filesToChunks.get(fileName);
+    }
 }

@@ -5,7 +5,6 @@ import cs555.dfs.node.Chunk;
 import java.io.*;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class MinorHeartbeat implements Message {
@@ -111,7 +110,6 @@ public class MinorHeartbeat implements Message {
     }
 
     public List<Chunk> getChunks() {
-        // todo
-        return Collections.emptyList();
+        return newChunks;
     }
 }

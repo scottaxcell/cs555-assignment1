@@ -1,12 +1,14 @@
 package cs555.dfs.wireformats;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class RetrieveFileResponse implements Message {
     private MessageHeader messageHeader;
     private String fileName;
-    private List<WireChunk> wireChunks;
+    private List<WireChunk> wireChunks = new ArrayList<>();
 
     public RetrieveFileResponse(String serverAddress, String sourceAddress, String fileName, List<WireChunk> wireChunks) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
@@ -70,6 +72,7 @@ public class RetrieveFileResponse implements Message {
         return "RetrieveFileResponse{" +
             "messageHeader=" + messageHeader +
             ", fileName='" + fileName + '\'' +
+            ", wireChunks=" + wireChunks +
             '}';
     }
 
@@ -110,6 +113,29 @@ public class RetrieveFileResponse implements Message {
             dataOutputStream.writeInt(sequence);
             dataOutputStream.writeInt(serverAddress.length());
             dataOutputStream.write(serverAddress.getBytes());
+        }
+
+        @Override
+        public String toString() {
+            return "WireChunk{" +
+                "fileName='" + fileName + '\'' +
+                ", sequence=" + sequence +
+                ", serverAddress='" + serverAddress + '\'' +
+                '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            WireChunk wireChunk = (WireChunk) o;
+            return sequence == wireChunk.sequence &&
+                fileName.equals(wireChunk.fileName);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(fileName, sequence);
         }
     }
 }
