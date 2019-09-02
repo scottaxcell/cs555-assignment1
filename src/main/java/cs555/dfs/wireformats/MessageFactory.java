@@ -22,6 +22,8 @@ public class MessageFactory {
                 return new StoreChunk(data);
             case Protocol.MINOR_HEART_BEAT:
                 return new MinorHeartbeat(data);
+            case Protocol.MAJOR_HEART_BEAT:
+                return new MajorHeartbeat(data);
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }

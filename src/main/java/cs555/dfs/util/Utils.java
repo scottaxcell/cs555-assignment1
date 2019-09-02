@@ -3,10 +3,14 @@ package cs555.dfs.util;
 import cs555.dfs.transport.TcpServer;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 public class Utils {
+    public static final int HASH_CODE_BYTE_SIZE = 40;
     private static boolean debug = true;
 
     public static void out(Object o) {
@@ -63,5 +67,33 @@ public class Utils {
         if (serverAddress == null)
             return new String[0];
         return serverAddress.split(":");
+    }
+
+    public static String createSha1FromBytes(byte[] data) {
+        MessageDigest digest = null;
+        try {
+            digest = MessageDigest.getInstance("SHA1");
+        }
+        catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        byte[] hash = digest.digest(data);
+        BigInteger hashInt = new BigInteger(1, hash);
+        return hashInt.toString(16);
+    }
+
+    public static String padStringWithZeros(String string, int expectedStringLength) {
+        String paddedString = string;
+        if (paddedString.length() < expectedStringLength) {
+            StringBuilder sb = new StringBuilder(paddedString);
+            while (sb.length() < expectedStringLength)
+                sb.insert(0, "0");
+            paddedString = sb.toString();
+        }
+        return paddedString;
+    }
+
+    public static String padHashCodeWithZeros(String hashCode) {
+        return padStringWithZeros(hashCode, HASH_CODE_BYTE_SIZE);
     }
 }

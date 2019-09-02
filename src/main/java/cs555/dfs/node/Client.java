@@ -11,9 +11,13 @@ import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * USE CASES
@@ -108,9 +112,8 @@ public class Client implements Node {
             return;
         }
 
-        List<String> nextServers = new ArrayList<>();
-        nextServers.add(chunkServerAddresses.get(1));
-        nextServers.add(chunkServerAddresses.get(2));
+        List<String> nextServers = chunkServerAddresses.stream()
+            .skip(1).collect(Collectors.toList());
 
         StoreChunk storeChunk = new StoreChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
             response.getFileName(), fileDataChunk.sequence, fileDataChunk.fileData, nextServers);

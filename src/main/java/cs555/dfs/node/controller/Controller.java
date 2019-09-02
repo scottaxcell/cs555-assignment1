@@ -57,6 +57,9 @@ public class Controller implements Node {
             case Protocol.MINOR_HEART_BEAT:
                 handleMinorHeartbeat(message);
                 break;
+            case Protocol.MAJOR_HEART_BEAT:
+                handleMajorHeartbeat(message);
+                break;
             case Protocol.STORE_CHUNK_REQUEST:
                 handleStoreChunkRequest(message);
                 break;
@@ -66,7 +69,6 @@ public class Controller implements Node {
     }
 
     private void handleStoreChunkRequest(Message message) {
-        // todo -- is the map necessary? can i push the address into the livechunkserver object
         StoreChunkRequest request = (StoreChunkRequest) message;
         Utils.debug("received: " + request);
         String fileName = request.getFileName();
@@ -82,7 +84,7 @@ public class Controller implements Node {
         }
 
         List<String> validServerAddresses = validChunkServers.stream()
-            .map(lcs -> lcs.getServerAddress())
+            .map(LiveChunkServer::getServerAddress)
             .collect(Collectors.toList());
 
         if (validServerAddresses.size() != REPLICATION_LEVEL) {
@@ -110,6 +112,17 @@ public class Controller implements Node {
                 .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
                 .findFirst()
                 .ifPresent(lcs -> lcs.minorHeartbeatUpdate(heartbeat));
+        }
+    }
+
+    private void handleMajorHeartbeat(Message message) {
+        MajorHeartbeat heartbeat = (MajorHeartbeat) message;
+        Utils.debug("received: " + heartbeat);
+        synchronized (liveChunkServers) {
+            liveChunkServers.stream()
+                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
+                .findFirst()
+                .ifPresent(lcs -> lcs.majorHeartbeatUpdate(heartbeat));
         }
     }
 

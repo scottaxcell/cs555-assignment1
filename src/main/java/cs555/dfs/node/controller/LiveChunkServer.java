@@ -2,16 +2,21 @@ package cs555.dfs.node.controller;
 
 import cs555.dfs.node.Chunk;
 import cs555.dfs.transport.TcpConnection;
+import cs555.dfs.wireformats.MajorHeartbeat;
 import cs555.dfs.wireformats.Message;
 import cs555.dfs.wireformats.MinorHeartbeat;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LiveChunkServer {
     private final TcpConnection tcpConnection;
     private final String serverAddress;
-    private Map<String, List<Chunk>> filesToChunks = new HashMap<>();
+    private Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
     private long usableSpace;
     private int totalNumberOfChunks;
 
@@ -23,6 +28,18 @@ public class LiveChunkServer {
     public void minorHeartbeatUpdate(MinorHeartbeat heartbeat) {
         usableSpace = heartbeat.getUsableSpace();
         totalNumberOfChunks = heartbeat.getNumberOfChunks();
+        List<Chunk> chunks = heartbeat.getChunks();
+        for (Chunk chunk : chunks) {
+            List<Chunk> computeIfAbsent = filesToChunks.computeIfAbsent(chunk.getFileName(), c -> new ArrayList<>());
+            if (!computeIfAbsent.contains(chunk))
+                computeIfAbsent.add(chunk);
+        }
+    }
+
+    public void majorHeartbeatUpdate(MajorHeartbeat heartbeat) {
+        usableSpace = heartbeat.getUsableSpace();
+        totalNumberOfChunks = heartbeat.getNumberOfChunks();
+        filesToChunks.clear();
         List<Chunk> chunks = heartbeat.getChunks();
         for (Chunk chunk : chunks)
             filesToChunks.computeIfAbsent(chunk.getFileName(), c -> new ArrayList<>());

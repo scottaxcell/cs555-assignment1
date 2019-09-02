@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 public class Chunk {
@@ -14,6 +15,7 @@ public class Chunk {
     private int version;
     private int sequence;
     private Instant timeStamp;
+    private List<String> checksums;
 
     public Chunk(String fileName, int sequence, Path path) {
         this.fileName = fileName;
@@ -99,5 +101,13 @@ public class Chunk {
     @Override
     public int hashCode() {
         return Objects.hash(fileName, sequence);
+    }
+
+    public void setChecksum(List<String> checksums) {
+        this.checksums = checksums;
+    }
+
+    public List<String> getChecksums() {
+        return checksums;
     }
 }

@@ -3,6 +3,7 @@ package cs555.dfs.node.chunkserver;
 import cs555.dfs.node.Chunk;
 import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
+import cs555.dfs.transport.TcpSender;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
@@ -14,6 +15,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class ChunkServer implements Node {
     private static final String TMP_DIR = "/tmp";
@@ -23,6 +26,7 @@ public class ChunkServer implements Node {
     private final int port;
     private final Path storageDir;
     private final TcpServer tcpServer;
+    private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>(); // key = remote socket address
     private TcpConnection controllerTcpConnection;
     private Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
     private final List<Chunk> newChunks = new ArrayList<>();
@@ -39,9 +43,9 @@ public class ChunkServer implements Node {
     }
 
     private void initMinorHeartbeatTimer() {
-        MinorHeartbeatTimerTask minorHeartbeatTimerTask = new MinorHeartbeatTimerTask();
+        HeartbeatTimerTask heartbeatTimerTask = new HeartbeatTimerTask();
         Timer timer = new Timer(true);
-        timer.schedule(minorHeartbeatTimerTask, MINOR_HEARTBEAT_DELAY, MINOR_HEARTBEAT_DELAY);
+        timer.schedule(heartbeatTimerTask, MINOR_HEARTBEAT_DELAY, MINOR_HEARTBEAT_DELAY);
     }
 
     private void registerWithController(String controllerIp, int controllerPort) {
@@ -68,6 +72,44 @@ public class ChunkServer implements Node {
         }
     }
 
+    private List<String> createChunkChecksums(byte[] fileData) {
+        List<String> checksums = new ArrayList<>();
+        Utils.debug("fileData.length: " + fileData.length);
+//        Utils.createSha1FromBytes()
+        List<byte[]> bytes = chunkifyFile(fileData);
+        for (byte[] b : bytes) {
+            String sha1FromBytes = Utils.createSha1FromBytes(b);
+            Utils.debug(sha1FromBytes);
+            checksums.add(sha1FromBytes);
+        }
+        return checksums;
+    }
+
+    private static final int CHUNK_SIZE = 8 * 1024; // 8 KB
+
+    public static List<byte[]> chunkifyFile(byte[] fileData) {
+        List<byte[]> bytes = new ArrayList<>();
+
+        long numChunks = fileData.length / CHUNK_SIZE;
+        Utils.debug("numChunks: " + numChunks);
+        int remainderChunk = (int) (fileData.length % CHUNK_SIZE);
+        Utils.debug("remainderChunk size: " + remainderChunk);
+
+        int chunkSequence = 0;
+        for (; chunkSequence < numChunks; chunkSequence++) {
+            byte[] b = new byte[CHUNK_SIZE];
+            System.arraycopy(fileData, chunkSequence * CHUNK_SIZE, b, 0, CHUNK_SIZE);
+            bytes.add(b);
+        }
+        if (remainderChunk > 0) {
+            byte[] b = new byte[remainderChunk];
+            System.arraycopy(fileData, chunkSequence * CHUNK_SIZE, b, 0, remainderChunk);
+            bytes.add(b);
+        }
+
+        return bytes;
+    }
+
     private void handleStoreChunk(Message message) {
         StoreChunk storeChunk = (StoreChunk) message;
         Utils.debug("received: " + storeChunk);
@@ -91,13 +133,50 @@ public class ChunkServer implements Node {
         chunk = chunks.get(idx);
 
         byte[] chunkData = storeChunk.getFileData();
+
+        List<String> checksums = createChunkChecksums(chunkData);
+        chunk.setChecksum(checksums);
+
         chunk.writeChunk(chunkData);
 
         List<String> nextServers = storeChunk.getNextServers();
         if (nextServers.isEmpty())
             return;
 
-        // todo -- forward chunk to next servers
+        TcpSender tcpSender = null;
+        TcpConnection chunkServerTcpConnection = connections.get(nextServers.get(0));
+        if (chunkServerTcpConnection != null) {
+            tcpSender = chunkServerTcpConnection.getTcpSender();
+        }
+        else {
+            String[] splitServerAddress = Utils.splitServerAddress(nextServers.get(0));
+            try {
+                Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
+                tcpSender = new TcpSender(socket);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (tcpSender == null) {
+            Utils.error("tcpServer is null");
+            return;
+        }
+
+
+        List<String> nextNextServers = nextServers.stream()
+            .skip(1).collect(Collectors.toList());
+
+
+        StoreChunk forwardStoreChunk = new StoreChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
+            fileName, sequence, chunkData, nextNextServers);
+        try {
+            tcpSender.send(forwardStoreChunk.getBytes());
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private Path generateWritePath(String fileName, int chunkSequence) {
@@ -116,7 +195,8 @@ public class ChunkServer implements Node {
 
     @Override
     public void registerNewTcpConnection(TcpConnection tcpConnection) {
-        // todo
+        connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
+        Utils.debug("registering tcp connection: " + tcpConnection.getRemoteSocketAddress());
     }
 
     @Override
@@ -158,14 +238,31 @@ public class ChunkServer implements Node {
         return numChunks;
     }
 
-    private class MinorHeartbeatTimerTask extends TimerTask {
+    private List<Chunk> getChunks() {
+        return filesToChunks.values().stream()
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
+    }
+
+    private class HeartbeatTimerTask extends TimerTask {
+        private static final int MAJOR_HEARTBEAT_INTERVAL = 10;
+        private final AtomicInteger counter = new AtomicInteger();
+
         @Override
         public void run() {
-            synchronized (newChunks) {
-                Utils.debug("newChunks.length: " + newChunks.size() + " : " + newChunks);
-                MinorHeartbeat heartbeat = new MinorHeartbeat(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), getUsableSpace(), getTotalNumberOfChunks(), newChunks);
+            if (counter.incrementAndGet() == MAJOR_HEARTBEAT_INTERVAL) {
+                MajorHeartbeat heartbeat = new MajorHeartbeat(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(),
+                    getUsableSpace(), getTotalNumberOfChunks(), getChunks());
                 sendMessageToController(heartbeat);
-                newChunks.clear();
+                counter.set(0);
+            }
+            else {
+                synchronized (newChunks) {
+                    MinorHeartbeat heartbeat = new MinorHeartbeat(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(),
+                        getUsableSpace(), getTotalNumberOfChunks(), newChunks);
+                    sendMessageToController(heartbeat);
+                    newChunks.clear();
+                }
             }
         }
     }
