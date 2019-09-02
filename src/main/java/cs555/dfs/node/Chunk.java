@@ -11,9 +11,9 @@ import java.util.Objects;
 
 public class Chunk {
     private final String fileName;
+    private final int sequence;
     private Path path;
     private int version;
-    private int sequence;
     private Instant timeStamp;
     private List<String> checksums;
 

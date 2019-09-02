@@ -14,13 +14,13 @@ import java.util.Random;
 public class FileChunkifier {
     private static final int CHUNK_SIZE = 64 * 1024; // 64 KB
 
-    public static List<byte[]> chunkifyFile(File file) {
+    public static List<byte[]> chunkifyFile(Path path) {
         List<byte[]> bytes = new ArrayList<>();
-        byte[] fileAsBytes = readFileToBytes(file);
+        byte[] fileAsBytes = readFileToBytes(path.toFile());
 
-        long numChunks = file.length() / CHUNK_SIZE;
+        long numChunks = path.toFile().length() / CHUNK_SIZE;
         Utils.debug("numChunks: " + numChunks);
-        int remainderChunk = (int) (file.length() % CHUNK_SIZE);
+        int remainderChunk = (int) (path.toFile().length() % CHUNK_SIZE);
         Utils.debug("remainderChunk size: " + remainderChunk);
 
         int chunkSequence = 0;
@@ -38,11 +38,11 @@ public class FileChunkifier {
         return bytes;
     }
 
-    public static List<FileDataChunk> chunkifyFileToFileDataChunks(File file) {
+    public static List<FileDataChunk> chunkifyFileToFileDataChunks(Path path) {
         List<FileDataChunk> fileDataChunks = new ArrayList<>();
-        List<byte[]> bytes = chunkifyFile(file);
+        List<byte[]> bytes = chunkifyFile(path);
         for (int i = 0; i < bytes.size(); i++) {
-            fileDataChunks.add(new FileDataChunk(i, bytes.get(i)));
+            fileDataChunks.add(new FileDataChunk(Utils.getCanonicalPath(path), i, bytes.get(i)));
         }
         return fileDataChunks;
     }
@@ -85,7 +85,7 @@ public class FileChunkifier {
             e.printStackTrace();
         }
 
-        List<byte[]> fileChunks = chunkifyFile(path.toFile());
+        List<byte[]> fileChunks = chunkifyFile(path);
         Utils.debug("num fileChunks: " + fileChunks.size());
         byte[] convertedBytes = convertByteArrayListToByteArray(fileChunks);
         Path duplicate = Paths.get("bogus.duplicate.bin");
@@ -97,17 +97,19 @@ public class FileChunkifier {
         }
     }
 
-
     public static class FileDataChunk {
+        public final String fileName;
         public final int sequence;
         public byte[] fileData;
 
-        public FileDataChunk(int sequence, byte[] fileData) {
+        public FileDataChunk(String fileName, int sequence, byte[] fileData) {
+            this.fileName = fileName;
             this.sequence = sequence;
             this.fileData = fileData;
         }
 
-        public FileDataChunk(int sequence) {
+        public FileDataChunk(String fileName, int sequence) {
+            this.fileName = fileName;
             this.sequence = sequence;
         }
 

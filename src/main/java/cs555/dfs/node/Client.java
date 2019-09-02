@@ -11,10 +11,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -40,6 +37,7 @@ public class Client implements Node {
     private final TcpServer tcpServer;
     private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>(); // key = remote socket address
     private TcpConnection controllerTcpConnection;
+    private List<FileChunkifier.FileDataChunk> currentFileDataChunks = new ArrayList<>();
 
     public Client(String controllerIp, int controllerPort) {
         tcpServer = new TcpServer(0, this);
@@ -72,6 +70,7 @@ public class Client implements Node {
         StoreChunkResponse response = (StoreChunkResponse) message;
         Utils.debug("received: " + response);
 
+        String fileName = response.getFileName();
         int chunkSequence = response.getChunkSequence();
         FileChunkifier.FileDataChunk fileDataChunk;
         synchronized (currentFileDataChunks) {
@@ -79,7 +78,7 @@ public class Client implements Node {
                 Utils.error("currentFileDataChunks is null");
                 return;
             }
-            FileChunkifier.FileDataChunk finderChunk = new FileChunkifier.FileDataChunk(chunkSequence);
+            FileChunkifier.FileDataChunk finderChunk = new FileChunkifier.FileDataChunk(fileName, chunkSequence);
             int idx = currentFileDataChunks.indexOf(finderChunk);
             if (idx == -1) {
                 Utils.error("fileDataChunks not found");
@@ -116,13 +115,15 @@ public class Client implements Node {
             .skip(1).collect(Collectors.toList());
 
         StoreChunk storeChunk = new StoreChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
-            response.getFileName(), fileDataChunk.sequence, fileDataChunk.fileData, nextServers);
+            fileName, fileDataChunk.sequence, fileDataChunk.fileData, nextServers);
         try {
             tcpSender.send(storeChunk.getBytes());
         }
         catch (IOException e) {
             e.printStackTrace();
         }
+
+        sendNextStoreChunkRequest();
     }
 
     @Override
@@ -154,6 +155,7 @@ public class Client implements Node {
             input = scanner.next();
             if (input.startsWith("sf")) {
                 // todo -- turn on ask for file
+                // todo -- wait for file to write before giving back command line prompt
 //                Utils.out("fileName: \n");
 //                String fileName = scanner.next();
                 String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.bin";
@@ -174,15 +176,21 @@ public class Client implements Node {
         }
     }
 
-    private List<FileChunkifier.FileDataChunk> currentFileDataChunks;
-
     private void storeFile(Path path) {
-        Utils.debug("storing file: " + Utils.getCanonicalPath(path));
-
-        currentFileDataChunks = Collections.synchronizedList(FileChunkifier.chunkifyFileToFileDataChunks(path.toFile()));
         synchronized (currentFileDataChunks) {
-            for (int i = 0; i < currentFileDataChunks.size(); i++) {
-                StoreChunkRequest request = new StoreChunkRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path), i);
+            currentFileDataChunks = Collections.synchronizedList(FileChunkifier.chunkifyFileToFileDataChunks(path));
+            if (!currentFileDataChunks.isEmpty()) {
+                sendNextStoreChunkRequest();
+            }
+        }
+    }
+
+    private void sendNextStoreChunkRequest() {
+        synchronized (currentFileDataChunks) {
+            if (!currentFileDataChunks.isEmpty()) {
+                FileChunkifier.FileDataChunk fileDataChunk = currentFileDataChunks.get(0);
+                StoreChunkRequest request = new StoreChunkRequest(getServerAddress(),
+                    controllerTcpConnection.getLocalSocketAddress(), fileDataChunk.fileName, fileDataChunk.sequence);
                 try {
                     controllerTcpConnection.send(request.getBytes());
                 }

@@ -20,6 +20,8 @@ Building a distributed, replicated, and fault tolerant path system
 * report path corruption to controller
 * add error detection by hashing on reads and writes
 * write metadata to header of file data being written per chunk
+* refresh state by reading from disk on initialization
+
 
 ### Client
 * ask controller for chunk servers to write chunk to
