@@ -1,6 +1,8 @@
 package cs555.dfs.wireformats;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 
 public class WireformatUtils {
     public static String deserializeString(DataInputStream dataInputStream) {
@@ -80,15 +82,11 @@ public class WireformatUtils {
 
     public static void serializeBytes(DataOutputStream dataOutputStream, byte[] bytes) {
         try {
+            dataOutputStream.writeInt(bytes.length);
             dataOutputStream.write(bytes);
         }
         catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static DataOutputStream createDataOutputStream() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        return new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
     }
 }

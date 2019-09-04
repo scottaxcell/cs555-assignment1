@@ -58,6 +58,12 @@ public class MessageHeader implements Message {
         return new MessageHeader(protocol, serverAddress, sourceAddress);
     }
 
+    public void serialize(DataOutputStream dataOutputStream) {
+        WireformatUtils.serializeInt(dataOutputStream, getProtocol());
+        WireformatUtils.serializeString(dataOutputStream, serverAddress);
+        WireformatUtils.serializeString(dataOutputStream, sourceAddress);
+    }
+
     @Override
     public String toString() {
         return "MessageHeader{" +

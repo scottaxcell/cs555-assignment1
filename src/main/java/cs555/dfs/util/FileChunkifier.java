@@ -61,7 +61,7 @@ public class FileChunkifier {
         }
     }
 
-    private static byte[] convertByteArrayListToByteArray(List<byte[]> byteArrayList) {
+    public static byte[] convertByteArrayListToByteArray(List<byte[]> byteArrayList) {
         int numBytes = 0;
         for (byte[] b : byteArrayList)
             numBytes += b.length;
@@ -170,6 +170,14 @@ public class FileChunkifier {
         @Override
         public int hashCode() {
             return Objects.hash(sequence);
+        }
+
+        public int getSequence() {
+            return sequence;
+        }
+
+        public byte[] getFileData() {
+            return fileData;
         }
     }
 }

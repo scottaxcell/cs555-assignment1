@@ -9,10 +9,12 @@ import cs555.dfs.wireformats.*;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -39,6 +41,8 @@ public class Client implements Node {
     private TcpConnection controllerTcpConnection;
     private List<FileChunkifier.FileDataChunk> currentFileDataChunks = new ArrayList<>();
     private List<WireChunk> currentWireChunks = new ArrayList<>();
+    private AtomicInteger expectedNumberOfFileChunks = new AtomicInteger();
+    private AtomicInteger numberOfFileChunksRead = new AtomicInteger();
 
     public Client(String controllerIp, int controllerPort) {
         tcpServer = new TcpServer(0, this);
@@ -74,8 +78,64 @@ public class Client implements Node {
     }
 
     private void handleRetrieveChunkResponse(Message message) {
-        RetrieveFileResponse response = (RetrieveFileResponse) message;
+        RetrieveChunkResponse response = (RetrieveChunkResponse) message;
         Utils.debug("received: " + response);
+
+        String fileName = response.getFileName();
+        int sequence = response.getSequence();
+        byte[] fileData = response.getFileData();
+        synchronized (currentFileDataChunks) {
+            FileChunkifier.FileDataChunk fileDataChunk = new FileChunkifier.FileDataChunk(fileName, sequence, fileData);
+            if (!currentFileDataChunks.contains(fileDataChunk)) {
+                currentFileDataChunks.add(fileDataChunk);
+            }
+            Utils.debug("received: " + numberOfFileChunksRead.get());
+            Utils.debug("expected: " + expectedNumberOfFileChunks.get());
+            if (numberOfFileChunksRead.incrementAndGet() == expectedNumberOfFileChunks.get()) {
+                Utils.debug("got all " + numberOfFileChunksRead.get() + " read chunks");
+                numberOfFileChunksRead.set(0);
+                writeFile();
+                return;
+            }
+        }
+        synchronized (currentWireChunks) {
+            if (!currentWireChunks.isEmpty()) {
+                WireChunk wireChunk = currentWireChunks.get(0);
+                String serverAddress = wireChunk.getServerAddress();
+
+                TcpSender tcpSender = getTcpSenderFromServerAddress(serverAddress);
+                if (tcpSender == null) {
+                    Utils.error("tcpServer is null");
+                    return;
+                }
+
+                RetrieveChunkRequest request = new RetrieveChunkRequest(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
+                    wireChunk.getFileName(), wireChunk.getSequence());
+                tcpSender.send(request.getBytes());
+
+                currentWireChunks.remove(wireChunk);
+            }
+        }
+    }
+
+    private void writeFile() {
+        synchronized (currentFileDataChunks) {
+            if (currentFileDataChunks.isEmpty())
+                return;
+            List<byte[]> list = currentFileDataChunks.stream()
+                .sorted(Comparator.comparingInt(FileChunkifier.FileDataChunk::getSequence))
+                .map(FileChunkifier.FileDataChunk::getFileData)
+                .collect(Collectors.toList());
+            byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
+            Path path = Paths.get("./bogus.bin_retrieved");
+            try {
+                Files.createDirectories(path.getParent());
+                Files.write(path, bytes);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void handleRetrieveFileResponse(Message message) {
@@ -86,6 +146,8 @@ public class Client implements Node {
             currentWireChunks = response.getWireChunks();
             if (currentWireChunks.isEmpty())
                 return;
+
+            expectedNumberOfFileChunks.set(currentWireChunks.size());
 
             WireChunk wireChunk = currentWireChunks.get(0);
             String fileName = wireChunk.getFileName();
@@ -107,20 +169,20 @@ public class Client implements Node {
     }
 
     private TcpSender getTcpSenderFromServerAddress(String serverAddress) {
-        TcpConnection tcpConnection = connections.get(serverAddress);
-        if (tcpConnection != null)
-            return tcpConnection.getTcpSender();
-        else {
-            String[] splitServerAddress = Utils.splitServerAddress(serverAddress);
-            try {
-                Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
-                return new TcpSender(socket);
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
+//        TcpConnection tcpConnection = connections.get(serverAddress);
+//        if (tcpConnection != null)
+//            return tcpConnection.getTcpSender();
+//        else {
+        String[] splitServerAddress = Utils.splitServerAddress(serverAddress);
+        try {
+            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
+            return new TcpSender(socket);
         }
+        catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+//        }
     }
 
     private void handleStoreChunkResponse(Message message) {
@@ -141,6 +203,9 @@ public class Client implements Node {
             currentFileDataChunks.remove(fileDataChunk);
         }
         List<String> chunkServerAddresses = response.getChunkServerAddresses();
+        if (chunkServerAddresses.isEmpty())
+            return;
+
         String firstChunkServerAddress = chunkServerAddresses.get(0);
 
         TcpSender tcpSender = getTcpSenderFromServerAddress(firstChunkServerAddress);
@@ -213,7 +278,7 @@ public class Client implements Node {
                 }
                 retrieveFile(path);
             }
-            else if (input.startsWith("pm")) {
+            else if (input.startsWith("h")) {
                 printMenu();
             }
             else if (input.startsWith("q")) {
@@ -260,8 +325,9 @@ public class Client implements Node {
 
     private static void printMenu() {
         Utils.out("****************\n");
-        Utils.out("pm -- print menu\n");
+        Utils.out("h -- print menu\n");
         Utils.out("sf -- store file\n");
+        Utils.out("rf -- read file\n");
         Utils.out("q  -- quit\n");
         Utils.out("****************\n");
     }

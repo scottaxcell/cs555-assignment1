@@ -41,7 +41,7 @@ public class RetrieveChunkRequest implements Message {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-            WireformatUtils.serializeBytes(dataOutputStream, messageHeader.getBytes());
+            messageHeader.serialize(dataOutputStream);
             WireformatUtils.serializeInt(dataOutputStream, sequence);
             WireformatUtils.serializeString(dataOutputStream, fileName);
 
@@ -75,5 +75,13 @@ public class RetrieveChunkRequest implements Message {
 
     public int getSequence() {
         return sequence;
+    }
+
+    public String getSourceAddess() {
+        return messageHeader.getSourceAddress();
+    }
+
+    public String getServerAddress() {
+        return messageHeader.getServerAddress();
     }
 }

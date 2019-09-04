@@ -119,10 +119,11 @@ public class Controller implements Node {
             .map(LiveChunkServer::getServerAddress)
             .collect(Collectors.toList());
 
-        if (validServerAddresses.size() != REPLICATION_LEVEL) {
-            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers, found " + validServerAddresses.size());
-            return;
-        }
+        // todo turn on
+//        if (validServerAddresses.size() != REPLICATION_LEVEL) {
+//            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers, found " + validServerAddresses.size());
+//            return;
+//        }
 
         String sourceAddress = request.getSourceAddress();
         TcpConnection tcpConnection = connections.get(sourceAddress);

@@ -59,7 +59,7 @@ public class MajorHeartbeat implements Message {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-            WireformatUtils.serializeBytes(dataOutputStream, messageHeader.getBytes());
+            messageHeader.serialize(dataOutputStream);
             WireformatUtils.serializeLong(dataOutputStream, usableSpace);
             WireformatUtils.serializeInt(dataOutputStream, totalNumberOfChunks);
             WireformatUtils.serializeInt(dataOutputStream, chunks.size());

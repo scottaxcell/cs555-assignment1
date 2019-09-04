@@ -76,8 +76,51 @@ public class ChunkServer implements Node {
     }
 
     private void handleRetrieveChunkRequest(Message message) {
+        // todo -- break here next...
         RetrieveChunkRequest request = (RetrieveChunkRequest) message;
         Utils.debug("received: " + request);
+
+        String fileName = request.getFileName();
+        int sequence = request.getSequence();
+        Chunk chunk = getChunk(fileName, sequence);
+        if (chunk == null) {
+            Utils.error("did not fund chunk " + chunk);
+        }
+
+        byte[] bytes = chunk.readChunk();
+
+        TcpSender tcpSender = null;
+//        TcpConnection chunkServerTcpConnection = connections.get(request.getSourceAddess());
+//        if (chunkServerTcpConnection != null) {
+//            tcpSender = chunkServerTcpConnection.getTcpSender();
+//        }
+//        else {
+        String[] splitServerAddress = Utils.splitServerAddress(request.getServerAddress());
+        try {
+            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
+            tcpSender = new TcpSender(socket);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+//        }
+
+        if (tcpSender == null) {
+            Utils.error("tcpServer is null");
+            return;
+        }
+
+        RetrieveChunkResponse response = new RetrieveChunkResponse(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
+            fileName, sequence, bytes);
+        tcpSender.send(response.getBytes());
+    }
+
+    private Chunk getChunk(String fileName, int sequence) {
+        Chunk finderChunk = new Chunk(fileName, sequence, generateWritePath(fileName, sequence));
+        return getChunks().stream()
+            .filter(c -> c.equals(finderChunk))
+            .findFirst()
+            .orElse(null);
     }
 
     private void handleStoreChunk(Message message) {

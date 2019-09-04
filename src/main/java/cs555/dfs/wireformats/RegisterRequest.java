@@ -35,7 +35,7 @@ public class RegisterRequest implements Message {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-            WireformatUtils.serializeBytes(dataOutputStream, messageHeader.getBytes());
+            messageHeader.serialize(dataOutputStream);
 
             dataOutputStream.flush();
 

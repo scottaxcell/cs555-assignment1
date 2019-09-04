@@ -47,7 +47,7 @@ public class RetrieveFileResponse implements Message {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-            WireformatUtils.serializeBytes(dataOutputStream, messageHeader.getBytes());
+            messageHeader.serialize(dataOutputStream);
             WireformatUtils.serializeString(dataOutputStream, fileName);
             WireformatUtils.serializeInt(dataOutputStream, wireChunks.size());
             for (WireChunk wireChunk : wireChunks)
