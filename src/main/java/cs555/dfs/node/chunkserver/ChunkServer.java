@@ -76,7 +76,6 @@ public class ChunkServer implements Node {
     }
 
     private void handleRetrieveChunkRequest(Message message) {
-        // todo -- break here next...
         RetrieveChunkRequest request = (RetrieveChunkRequest) message;
         Utils.debug("received: " + request);
 
@@ -88,31 +87,26 @@ public class ChunkServer implements Node {
         }
 
         byte[] bytes = chunk.readChunk();
+        List<Integer> corruptSlices = new ArrayList<>();
+        List<String> sliceChecksums = FileChunkifier.createSliceChecksums(bytes);
+        FileChunkifier.compareChecksums(chunk.getChecksums(), sliceChecksums, corruptSlices);
 
-        TcpSender tcpSender = null;
-//        TcpConnection chunkServerTcpConnection = connections.get(request.getSourceAddess());
-//        if (chunkServerTcpConnection != null) {
-//            tcpSender = chunkServerTcpConnection.getTcpSender();
-//        }
-//        else {
-        String[] splitServerAddress = Utils.splitServerAddress(request.getServerAddress());
-        try {
-            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
-            tcpSender = new TcpSender(socket);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-//        }
-
+        TcpSender tcpSender = TcpSender.of(request.getServerAddress());
         if (tcpSender == null) {
             Utils.error("tcpServer is null");
             return;
         }
 
-        RetrieveChunkResponse response = new RetrieveChunkResponse(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
-            fileName, sequence, bytes);
-        tcpSender.send(response.getBytes());
+        if (corruptSlices.isEmpty()) {
+            RetrieveChunkResponse response = new RetrieveChunkResponse(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
+                fileName, sequence, bytes);
+            tcpSender.send(response.getBytes());
+        }
+        else {
+            ChunkCorruption chunkCorruption = new ChunkCorruption(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
+                fileName, sequence, corruptSlices);
+            tcpSender.send(chunkCorruption.getBytes());
+        }
     }
 
     private Chunk getChunk(String fileName, int sequence) {
@@ -156,31 +150,14 @@ public class ChunkServer implements Node {
         if (nextServers.isEmpty())
             return;
 
-        TcpSender tcpSender = null;
-        TcpConnection chunkServerTcpConnection = connections.get(nextServers.get(0));
-        if (chunkServerTcpConnection != null) {
-            tcpSender = chunkServerTcpConnection.getTcpSender();
-        }
-        else {
-            String[] splitServerAddress = Utils.splitServerAddress(nextServers.get(0));
-            try {
-                Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
-                tcpSender = new TcpSender(socket);
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
+        TcpSender tcpSender = TcpSender.of(nextServers.get(0));
         if (tcpSender == null) {
             Utils.error("tcpServer is null");
             return;
         }
 
-
         List<String> nextNextServers = nextServers.stream()
             .skip(1).collect(Collectors.toList());
-
 
         StoreChunk forwardStoreChunk = new StoreChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
             fileName, sequence, chunkData, nextNextServers);

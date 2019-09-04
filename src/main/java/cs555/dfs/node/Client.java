@@ -72,9 +72,25 @@ public class Client implements Node {
             case Protocol.RETRIEVE_CHUNK_RESPONSE:
                 handleRetrieveChunkResponse(message);
                 break;
+            case Protocol.CHUNK_CORRUPTION:
+                handleChunkCorruption(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
+    }
+
+    private void handleChunkCorruption(Message message) {
+        ChunkCorruption chunkCorruption = (ChunkCorruption) message;
+        Utils.debug("received: " + chunkCorruption);
+        synchronized (currentWireChunks) {
+            currentWireChunks.clear();
+        }
+        synchronized (currentFileDataChunks) {
+            currentFileDataChunks.clear();
+        }
+        numberOfFileChunksRead.set(0);
+        expectedNumberOfFileChunks.set(0);
     }
 
     private void handleRetrieveChunkResponse(Message message) {
@@ -127,7 +143,7 @@ public class Client implements Node {
                 .map(FileChunkifier.FileDataChunk::getFileData)
                 .collect(Collectors.toList());
             byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
-            Path path = Paths.get("./bogus.bin_retrieved");
+            Path path = Paths.get("./bogus.txt_retrieved");
             try {
                 Files.createDirectories(path.getParent());
                 Files.write(path, bytes);
@@ -173,16 +189,17 @@ public class Client implements Node {
 //        if (tcpConnection != null)
 //            return tcpConnection.getTcpSender();
 //        else {
-        String[] splitServerAddress = Utils.splitServerAddress(serverAddress);
-        try {
-            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
-            return new TcpSender(socket);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
+//        String[] splitServerAddress = Utils.splitServerAddress(serverAddress);
+//        try {
+//            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
+//            return new TcpSender(socket);
 //        }
+//        catch (IOException e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+//        }
+        return TcpSender.of(serverAddress);
     }
 
     private void handleStoreChunkResponse(Message message) {
@@ -256,7 +273,7 @@ public class Client implements Node {
                 // todo -- wait for file to write before giving back command line prompt
 //                Utils.out("fileName: \n");
 //                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.bin";
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.out("file does not exist: " + path + "\n");
@@ -270,7 +287,7 @@ public class Client implements Node {
                 // todo -- ask for output path
 //                Utils.out("fileName: \n");
 //                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.bin";
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.out("file does not exist: " + path + "\n");

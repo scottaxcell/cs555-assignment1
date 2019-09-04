@@ -11,4 +11,5 @@ public class Protocol {
     public static final int RETRIEVE_FILE_RESPONSE = 307;
     public static final int RETRIEVE_CHUNK_REQUEST = 308;
     public static final int RETRIEVE_CHUNK_RESPONSE = 309;
+    public static final int CHUNK_CORRUPTION = 310;
 }

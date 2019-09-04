@@ -6,10 +6,8 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class FileChunkifier {
     private static final int CHUNK_SIZE = 64 * 1024; // 64 KB
@@ -111,7 +109,7 @@ public class FileChunkifier {
     }
 
     public static void main(String[] args) {
-        Path path = Paths.get("bogus.bin");
+        Path path = Paths.get("bogus.txt");
         byte[] randomBytes = new byte[CHUNK_SIZE * 5 + 2];
         new Random().nextBytes(randomBytes);
         try {
@@ -132,8 +130,9 @@ public class FileChunkifier {
             e.printStackTrace();
         }
 
+        int multiplier = 1;
         // checksumming some slices bro
-        randomBytes = new byte[CHUNK_SIZE * 11];
+        randomBytes = new byte[CHUNK_SIZE * multiplier];
         new Random().nextBytes(randomBytes);
         Utils.debug("randomBytes.length: " + randomBytes.length);
         List<String> sliceChecksums = createSliceChecksums(randomBytes);
@@ -141,6 +140,50 @@ public class FileChunkifier {
         for (String checksum : sliceChecksums) {
             Utils.debug(checksum);
         }
+
+//        randomBytes = new byte[CHUNK_SIZE * multiplier];
+        randomBytes[0] = Byte.parseByte("123");
+        List<Integer> corruptSlices = new ArrayList<>();
+        List<String> sliceChecksums2 = FileChunkifier.createSliceChecksums(randomBytes);
+        FileChunkifier.compareChecksums(sliceChecksums, sliceChecksums2, corruptSlices);
+        Utils.debug("num corrupt slices: " + corruptSlices.size());
+        Utils.debug(corruptSlices.stream().map(String::valueOf).collect(Collectors.joining(", ")));
+
+    }
+
+    public static boolean compareChecksums(List<String> checksums1, List<String> checksums2, List<Integer> corruptSlices) {
+        boolean equal = true;
+
+        int slice1 = 0;
+        int slice2 = 0;
+
+        Iterator<String> iterator1 = checksums1.iterator();
+        Iterator<String> iterator2 = checksums2.iterator();
+
+        while (iterator1.hasNext() && iterator2.hasNext()) {
+            String cs1 = iterator1.next();
+            String cs2 = iterator2.next();
+            if (!cs1.equals(cs2)) {
+                equal = false;
+                corruptSlices.add(slice1);
+            }
+            slice1++;
+            slice2++;
+        }
+
+        while (iterator1.hasNext()) {
+            equal = false;
+            corruptSlices.add(slice1);
+            slice1++;
+        }
+
+        while (iterator2.hasNext()) {
+            equal = false;
+            corruptSlices.add(slice2);
+            slice2++;
+        }
+
+        return equal;
     }
 
     public static class FileDataChunk {

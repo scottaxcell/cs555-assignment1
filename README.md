@@ -6,6 +6,9 @@ Building a distributed, replicated, and fault tolerant path system
 * ~~can i remove the socket from the messages and create constructors that take serialized data~~
 * ~~create run script to launch controller, chunk servers, and client for easier testing~~
 * ~~add temp testing command line handling for easier testing~~
+* figure out storing of already connected remote hosts, is this needed?
+* list available files from client, select one and prompt for dir to write to
+
 #### Code cleanup
 * standardize serialization and deserialization api to be shared among wireformats
 * improve small classes for grouping chunk info together FileDataChunk, WireChunk, etc.
