@@ -11,22 +11,6 @@ public class RetrieveFileRequest implements Message {
         this.fileName = fileName;
     }
 
-    public RetrieveFileRequest(byte[] bytes) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
-
-            this.messageHeader = MessageHeader.deserialize(dataInputStream);
-            fileName = WireformatUtils.deserializeString(dataInputStream);
-
-            byteArrayInputStream.close();
-            dataInputStream.close();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public int getProtocol() {
         return Protocol.RETRIEVE_FILE_REQUEST;
@@ -55,6 +39,22 @@ public class RetrieveFileRequest implements Message {
         catch (IOException e) {
             e.printStackTrace();
             return new byte[0];
+        }
+    }
+
+    public RetrieveFileRequest(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+            this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            fileName = WireformatUtils.deserializeString(dataInputStream);
+
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

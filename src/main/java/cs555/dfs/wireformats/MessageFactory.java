@@ -32,7 +32,7 @@ public class MessageFactory {
                 return new RetrieveChunkRequest(data);
             case Protocol.RETRIEVE_CHUNK_RESPONSE:
                 return new RetrieveChunkResponse(data);
-            case Protocol.CHUNK_CORRUPTION:
+            case Protocol.CORRUPT_CHUNK:
                 return new CorruptChunk(data);
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));

@@ -15,25 +15,6 @@ public class StoreChunkResponse implements Message {
         this.chunkServerAddresses = chunkServerAddresses;
     }
 
-    public StoreChunkResponse(byte[] bytes) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
-
-            messageHeader = MessageHeader.deserialize(dataInputStream);
-            chunk = Chunk.deserialize(dataInputStream);
-            int numAddresses = WireformatUtils.deserializeInt(dataInputStream);
-            for (int i = 0; i < numAddresses; i++)
-                chunkServerAddresses.add(WireformatUtils.deserializeString(dataInputStream));
-
-            byteArrayInputStream.close();
-            dataInputStream.close();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public int getProtocol() {
         return Protocol.STORE_CHUNK_RESPONSE;
@@ -64,6 +45,25 @@ public class StoreChunkResponse implements Message {
         catch (IOException e) {
             e.printStackTrace();
             return new byte[0];
+        }
+    }
+
+    public StoreChunkResponse(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            chunk = Chunk.deserialize(dataInputStream);
+            int numAddresses = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numAddresses; i++)
+                chunkServerAddresses.add(WireformatUtils.deserializeString(dataInputStream));
+
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

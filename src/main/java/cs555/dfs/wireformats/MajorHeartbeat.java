@@ -20,34 +20,6 @@ public class MajorHeartbeat implements Message {
         this.chunks = chunks;
     }
 
-    public MajorHeartbeat(byte[] bytes) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
-
-            this.messageHeader = MessageHeader.deserialize(dataInputStream);
-
-            usableSpace = WireformatUtils.deserializeLong(dataInputStream);
-            totalNumberOfChunks = WireformatUtils.deserializeInt(dataInputStream);
-
-            int numNewChunks = WireformatUtils.deserializeInt(dataInputStream);
-            // todo -- cleanup chunk deserialization
-            for (int i = 0; i < numNewChunks; i++) {
-                String fileName = WireformatUtils.deserializeString(dataInputStream);
-                int version = dataInputStream.readInt();
-                int sequence = dataInputStream.readInt();
-                long timeStampEpochSecond = dataInputStream.readLong();
-                chunks.add(new Chunk(fileName, version, sequence, Instant.ofEpochSecond(timeStampEpochSecond)));
-            }
-
-            byteArrayInputStream.close();
-            dataInputStream.close();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public int getProtocol() {
         return Protocol.MAJOR_HEART_BEAT;
@@ -87,6 +59,34 @@ public class MajorHeartbeat implements Message {
         catch (IOException e) {
             e.printStackTrace();
             return new byte[0];
+        }
+    }
+
+    public MajorHeartbeat(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+            this.messageHeader = MessageHeader.deserialize(dataInputStream);
+
+            usableSpace = WireformatUtils.deserializeLong(dataInputStream);
+            totalNumberOfChunks = WireformatUtils.deserializeInt(dataInputStream);
+
+            int numNewChunks = WireformatUtils.deserializeInt(dataInputStream);
+            // todo -- cleanup chunk deserialization
+            for (int i = 0; i < numNewChunks; i++) {
+                String fileName = WireformatUtils.deserializeString(dataInputStream);
+                int version = dataInputStream.readInt();
+                int sequence = dataInputStream.readInt();
+                long timeStampEpochSecond = dataInputStream.readLong();
+                chunks.add(new Chunk(fileName, version, sequence, Instant.ofEpochSecond(timeStampEpochSecond)));
+            }
+
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

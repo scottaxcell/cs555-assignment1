@@ -15,28 +15,9 @@ public class CorruptChunk implements Message {
         this.corruptSlices = corruptSlices;
     }
 
-    public CorruptChunk(byte[] bytes) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
-
-            messageHeader = MessageHeader.deserialize(dataInputStream);
-            chunk = Chunk.deserialize(dataInputStream);
-            int numCorruptSlices = WireformatUtils.deserializeInt(dataInputStream);
-            for (int i = 0; i < numCorruptSlices; i++)
-                corruptSlices.add(WireformatUtils.deserializeInt(dataInputStream));
-
-            byteArrayInputStream.close();
-            dataInputStream.close();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public int getProtocol() {
-        return Protocol.CHUNK_CORRUPTION;
+        return Protocol.CORRUPT_CHUNK;
     }
 
     @Override
@@ -63,6 +44,25 @@ public class CorruptChunk implements Message {
         catch (IOException e) {
             e.printStackTrace();
             return new byte[0];
+        }
+    }
+
+    public CorruptChunk(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            chunk = Chunk.deserialize(dataInputStream);
+            int numCorruptSlices = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numCorruptSlices; i++)
+                corruptSlices.add(WireformatUtils.deserializeInt(dataInputStream));
+
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

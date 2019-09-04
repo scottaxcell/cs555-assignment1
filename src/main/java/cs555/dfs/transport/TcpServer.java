@@ -23,19 +23,6 @@ public class TcpServer implements Runnable {
         }
     }
 
-    @Override
-    public void run() {
-        try {
-            while (!Thread.interrupted()) {
-                Socket socket = serverSocket.accept();
-                node.registerNewTcpConnection(new TcpConnection(socket, node));
-            }
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     public String getIp() {
         try {
             return serverSocket.getInetAddress().getLocalHost().getCanonicalHostName();
@@ -48,5 +35,18 @@ public class TcpServer implements Runnable {
 
     public int getPort() {
         return serverSocket.getLocalPort();
+    }
+
+    @Override
+    public void run() {
+        try {
+            while (!Thread.interrupted()) {
+                Socket socket = serverSocket.accept();
+                node.registerNewTcpConnection(new TcpConnection(socket, node));
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

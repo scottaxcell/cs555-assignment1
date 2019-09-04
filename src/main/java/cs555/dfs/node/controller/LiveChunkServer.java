@@ -53,16 +53,16 @@ public class LiveChunkServer {
     }
 
     @Override
+    public int hashCode() {
+        return Objects.hash(serverAddress);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         LiveChunkServer that = (LiveChunkServer) o;
         return serverAddress.equals(that.serverAddress);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(serverAddress);
     }
 
     @Override

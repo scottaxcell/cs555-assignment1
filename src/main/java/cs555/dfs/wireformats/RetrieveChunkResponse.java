@@ -13,23 +13,6 @@ public class RetrieveChunkResponse implements Message {
         this.fileData = fileData;
     }
 
-    public RetrieveChunkResponse(byte[] bytes) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
-
-            messageHeader = MessageHeader.deserialize(dataInputStream);
-            chunk = Chunk.deserialize(dataInputStream);
-            fileData = WireformatUtils.deserializeBytes(dataInputStream);
-
-            byteArrayInputStream.close();
-            dataInputStream.close();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public int getProtocol() {
         return Protocol.RETRIEVE_CHUNK_RESPONSE;
@@ -60,12 +43,29 @@ public class RetrieveChunkResponse implements Message {
         }
     }
 
+    public RetrieveChunkResponse(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            chunk = Chunk.deserialize(dataInputStream);
+            fileData = WireformatUtils.deserializeBytes(dataInputStream);
+
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public String toString() {
         return "RetrieveChunkResponse{" +
             "messageHeader=" + messageHeader +
             ", chunk=" + chunk +
-            ", fileData.length=" + fileData.length +
+            ", data.length=" + fileData.length +
             '}';
     }
 

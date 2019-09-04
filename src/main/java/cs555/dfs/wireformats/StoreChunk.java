@@ -17,29 +17,6 @@ public class StoreChunk implements Message {
         this.nextServers = nextServers;
     }
 
-    public StoreChunk(byte[] bytes) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
-
-            messageHeader = MessageHeader.deserialize(dataInputStream);
-            chunk = Chunk.deserialize(dataInputStream);
-
-            fileData = WireformatUtils.deserializeBytes(dataInputStream);
-            int numServers = WireformatUtils.deserializeInt(dataInputStream);
-            for (int i = 0; i < numServers; i++) {
-                String server = WireformatUtils.deserializeString(dataInputStream);
-                nextServers.add(server);
-            }
-
-            byteArrayInputStream.close();
-            dataInputStream.close();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public int getProtocol() {
         return Protocol.STORE_CHUNK;
@@ -73,12 +50,35 @@ public class StoreChunk implements Message {
         }
     }
 
+    public StoreChunk(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            chunk = Chunk.deserialize(dataInputStream);
+
+            fileData = WireformatUtils.deserializeBytes(dataInputStream);
+            int numServers = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numServers; i++) {
+                String server = WireformatUtils.deserializeString(dataInputStream);
+                nextServers.add(server);
+            }
+
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public String toString() {
         return "StoreChunk{" +
             "messageHeader=" + messageHeader +
             ", chunk=" + chunk +
-            ", fileData.length=" + fileData.length +
+            ", data.length=" + fileData.length +
             ", nextServers=" + nextServers +
             '}';
     }

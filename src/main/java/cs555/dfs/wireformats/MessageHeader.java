@@ -13,6 +13,27 @@ public class MessageHeader implements Message {
         this.sourceAddress = sourceAddress;
     }
 
+    public static MessageHeader deserialize(DataInputStream dataInputStream) {
+        int protocol = WireformatUtils.deserializeInt(dataInputStream);
+        String serverAddress = WireformatUtils.deserializeString(dataInputStream);
+        String sourceAddress = WireformatUtils.deserializeString(dataInputStream);
+        return new MessageHeader(protocol, serverAddress, sourceAddress);
+    }
+
+    public String getServerAddress() {
+        return serverAddress;
+    }
+
+    public String getSourceAddress() {
+        return sourceAddress;
+    }
+
+    public void serialize(DataOutputStream dataOutputStream) {
+        WireformatUtils.serializeInt(dataOutputStream, getProtocol());
+        WireformatUtils.serializeString(dataOutputStream, serverAddress);
+        WireformatUtils.serializeString(dataOutputStream, sourceAddress);
+    }
+
     @Override
     public int getProtocol() {
         return protocol;
@@ -41,27 +62,6 @@ public class MessageHeader implements Message {
             e.printStackTrace();
             return new byte[0];
         }
-    }
-
-    public String getServerAddress() {
-        return serverAddress;
-    }
-
-    public String getSourceAddress() {
-        return sourceAddress;
-    }
-
-    public static MessageHeader deserialize(DataInputStream dataInputStream) {
-        int protocol = WireformatUtils.deserializeInt(dataInputStream);
-        String serverAddress = WireformatUtils.deserializeString(dataInputStream);
-        String sourceAddress = WireformatUtils.deserializeString(dataInputStream);
-        return new MessageHeader(protocol, serverAddress, sourceAddress);
-    }
-
-    public void serialize(DataOutputStream dataOutputStream) {
-        WireformatUtils.serializeInt(dataOutputStream, getProtocol());
-        WireformatUtils.serializeString(dataOutputStream, serverAddress);
-        WireformatUtils.serializeString(dataOutputStream, sourceAddress);
     }
 
     @Override

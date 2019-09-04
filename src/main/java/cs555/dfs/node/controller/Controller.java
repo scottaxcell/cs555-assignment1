@@ -47,6 +47,20 @@ public class Controller implements Node {
         Utils.sleep(500);
     }
 
+    public static void main(String[] args) {
+        if (args.length != 1)
+            printHelpAndExit();
+
+        int port = Integer.parseInt(args[0]);
+
+        new Controller(port);
+    }
+
+    private static void printHelpAndExit() {
+        Utils.out("USAGE: java Controller <port>\n");
+        System.exit(-1);
+    }
+
     @Override
     public void onMessage(Message message) {
         int protocol = message.getProtocol();
@@ -66,38 +80,49 @@ public class Controller implements Node {
             case Protocol.RETRIEVE_FILE_REQUEST:
                 handleRetrieveFileRequest(message);
                 break;
+            case Protocol.CORRUPT_CHUNK:
+                handleCorruptChunk(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
     }
 
-    private void handleRetrieveFileRequest(Message message) {
-        RetrieveFileRequest request = (RetrieveFileRequest) message;
+    private void handleRegisterRequest(Message message) {
+        RegisterRequest request = (RegisterRequest) message;
         Utils.debug("received: " + request);
-
-        String fileName = request.getFileName();
-        List<ChunkLocation> chunkLocations = new ArrayList<>();
+        String serverAddress = request.getServerAddress();
+        String sourceAddress = request.getSourceAddress();
         synchronized (liveChunkServers) {
-            for (LiveChunkServer lcs : liveChunkServers) {
-                List<Chunk> chunks = lcs.getChunks(fileName);
-                if (chunks == null)
-                    continue;
-                for (Chunk c : chunks) {
-                    ChunkLocation chunkLocation = new ChunkLocation(new cs555.dfs.wireformats.Chunk(fileName, c.getSequence()), lcs.getServerAddress());
-                    if (!chunkLocations.contains(chunkLocation))
-                        chunkLocations.add(chunkLocation);
-                }
+            boolean noneMatch = liveChunkServers.stream()
+                .noneMatch(lcs -> lcs.getServerAddress().equals(serverAddress));
+            if (noneMatch) {
+                liveChunkServers.add(new LiveChunkServer(connections.get(sourceAddress), serverAddress));
+                Utils.debug("registering chunk server: " + serverAddress);
             }
         }
+    }
 
-        if (chunkLocations.isEmpty())
-            return;
+    private void handleMinorHeartbeat(Message message) {
+        MinorHeartbeat heartbeat = (MinorHeartbeat) message;
+        Utils.debug("received: " + heartbeat);
+        synchronized (liveChunkServers) {
+            liveChunkServers.stream()
+                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
+                .findFirst()
+                .ifPresent(lcs -> lcs.minorHeartbeatUpdate(heartbeat));
+        }
+    }
 
-        String sourceAddress = request.getSourceAddress();
-        TcpConnection tcpConnection = connections.get(sourceAddress);
-
-        RetrieveFileResponse response = new RetrieveFileResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, chunkLocations);
-        tcpConnection.send(response.getBytes());
+    private void handleMajorHeartbeat(Message message) {
+        MajorHeartbeat heartbeat = (MajorHeartbeat) message;
+        Utils.debug("received: " + heartbeat);
+        synchronized (liveChunkServers) {
+            liveChunkServers.stream()
+                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
+                .findFirst()
+                .ifPresent(lcs -> lcs.majorHeartbeatUpdate(heartbeat));
+        }
     }
 
     private void handleStoreChunkRequest(Message message) {
@@ -133,41 +158,42 @@ public class Controller implements Node {
         tcpConnection.send(response.getBytes());
     }
 
-    private void handleMinorHeartbeat(Message message) {
-        MinorHeartbeat heartbeat = (MinorHeartbeat) message;
-        Utils.debug("received: " + heartbeat);
-        synchronized (liveChunkServers) {
-            liveChunkServers.stream()
-                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
-                .findFirst()
-                .ifPresent(lcs -> lcs.minorHeartbeatUpdate(heartbeat));
-        }
-    }
-
-    private void handleMajorHeartbeat(Message message) {
-        MajorHeartbeat heartbeat = (MajorHeartbeat) message;
-        Utils.debug("received: " + heartbeat);
-        synchronized (liveChunkServers) {
-            liveChunkServers.stream()
-                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
-                .findFirst()
-                .ifPresent(lcs -> lcs.majorHeartbeatUpdate(heartbeat));
-        }
-    }
-
-    private void handleRegisterRequest(Message message) {
-        RegisterRequest request = (RegisterRequest) message;
+    private void handleRetrieveFileRequest(Message message) {
+        RetrieveFileRequest request = (RetrieveFileRequest) message;
         Utils.debug("received: " + request);
-        String serverAddress = request.getServerAddress();
-        String sourceAddress = request.getSourceAddress();
+
+        String fileName = request.getFileName();
+        List<ChunkLocation> chunkLocations = new ArrayList<>();
         synchronized (liveChunkServers) {
-            boolean noneMatch = liveChunkServers.stream()
-                .noneMatch(lcs -> lcs.getServerAddress().equals(serverAddress));
-            if (noneMatch) {
-                liveChunkServers.add(new LiveChunkServer(connections.get(sourceAddress), serverAddress));
-                Utils.debug("registering chunk server: " + serverAddress);
+            for (LiveChunkServer lcs : liveChunkServers) {
+                List<Chunk> chunks = lcs.getChunks(fileName);
+                if (chunks == null)
+                    continue;
+                for (Chunk c : chunks) {
+                    ChunkLocation chunkLocation = new ChunkLocation(new cs555.dfs.wireformats.Chunk(fileName, c.getSequence()), lcs.getServerAddress());
+                    if (!chunkLocations.contains(chunkLocation))
+                        chunkLocations.add(chunkLocation);
+                }
             }
         }
+
+        if (chunkLocations.isEmpty())
+            return;
+
+        String sourceAddress = request.getSourceAddress();
+        TcpConnection tcpConnection = connections.get(sourceAddress);
+
+        RetrieveFileResponse response = new RetrieveFileResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, chunkLocations);
+        tcpConnection.send(response.getBytes());
+    }
+
+    private void handleCorruptChunk(Message message) {
+        CorruptChunk corruptChunk = (CorruptChunk) message;
+        Utils.debug("received: " + corruptChunk);
+
+        String fileName = corruptChunk.getFileName();
+        int sequence = corruptChunk.getSequence();
+        String serverAddress = corruptChunk.getServerAddress();
     }
 
     @Override
@@ -184,19 +210,5 @@ public class Controller implements Node {
     @Override
     public String getServerAddress() {
         return Utils.getServerAddress(tcpServer);
-    }
-
-    public static void main(String[] args) {
-        if (args.length != 1)
-            printHelpAndExit();
-
-        int port = Integer.parseInt(args[0]);
-
-        new Controller(port);
-    }
-
-    private static void printHelpAndExit() {
-        Utils.out("USAGE: java Controller <port>\n");
-        System.exit(-1);
     }
 }

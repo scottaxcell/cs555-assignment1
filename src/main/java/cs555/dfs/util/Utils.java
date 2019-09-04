@@ -7,6 +7,8 @@ import java.math.BigInteger;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Random;
 
 public class Utils {
@@ -83,6 +85,10 @@ public class Utils {
         return hashInt.toString(16);
     }
 
+    public static String padHashCodeWithZeros(String hashCode) {
+        return padStringWithZeros(hashCode, HASH_CODE_BYTE_SIZE);
+    }
+
     public static String padStringWithZeros(String string, int expectedStringLength) {
         String paddedString = string;
         if (paddedString.length() < expectedStringLength) {
@@ -94,7 +100,40 @@ public class Utils {
         return paddedString;
     }
 
-    public static String padHashCodeWithZeros(String hashCode) {
-        return padStringWithZeros(hashCode, HASH_CODE_BYTE_SIZE);
+    public static boolean compareChecksums(List<String> checksums1, List<String> checksums2, List<Integer> corruptSlices) {
+        boolean equal = true;
+
+        int slice1 = 0;
+        int slice2 = 0;
+
+        Iterator<String> iterator1 = checksums1.iterator();
+        Iterator<String> iterator2 = checksums2.iterator();
+
+        while (iterator1.hasNext() && iterator2.hasNext()) {
+            String cs1 = iterator1.next();
+            String cs2 = iterator2.next();
+            if (!cs1.equals(cs2)) {
+                equal = false;
+                corruptSlices.add(slice1);
+            }
+            slice1++;
+            slice2++;
+        }
+
+        while (iterator1.hasNext()) {
+            iterator1.next();
+            equal = false;
+            corruptSlices.add(slice1);
+            slice1++;
+        }
+
+        while (iterator2.hasNext()) {
+            iterator2.next();
+            equal = false;
+            corruptSlices.add(slice2);
+            slice2++;
+        }
+
+        return equal;
     }
 }

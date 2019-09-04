@@ -30,17 +30,6 @@ public class Chunk {
         this.timeStamp = timeStamp;
     }
 
-    @Override
-    public String toString() {
-        return "Chunk{" +
-            "fileName=" + fileName +
-            ", path=" + path +
-            ", version=" + version +
-            ", sequence=" + sequence +
-            ", timeStamp=" + timeStamp +
-            '}';
-    }
-
     public void writeChunk(byte[] bytes) {
         try {
             Utils.debug("writing " + path);
@@ -54,12 +43,12 @@ public class Chunk {
         }
     }
 
-    private void updateTimestamp() {
-        timeStamp = Instant.now();
-    }
-
     private void incrementVersion() {
         version++;
+    }
+
+    private void updateTimestamp() {
+        timeStamp = Instant.now();
     }
 
     public byte[] readChunk() {
@@ -91,6 +80,11 @@ public class Chunk {
     }
 
     @Override
+    public int hashCode() {
+        return Objects.hash(fileName, sequence);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -100,8 +94,14 @@ public class Chunk {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(fileName, sequence);
+    public String toString() {
+        return "Chunk{" +
+            "fileName=" + fileName +
+            ", path=" + path +
+            ", version=" + version +
+            ", sequence=" + sequence +
+            ", timeStamp=" + timeStamp +
+            '}';
     }
 
     public void setChecksum(List<String> checksums) {

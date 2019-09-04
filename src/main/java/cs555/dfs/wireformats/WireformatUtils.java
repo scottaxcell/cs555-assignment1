@@ -31,7 +31,7 @@ public class WireformatUtils {
 
     public static long deserializeLong(DataInputStream dataInputStream) {
         try {
-            long l  = dataInputStream.readLong();
+            long l = dataInputStream.readLong();
             return l;
         }
         catch (IOException e) {

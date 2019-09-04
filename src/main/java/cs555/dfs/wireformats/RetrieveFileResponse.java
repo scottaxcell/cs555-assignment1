@@ -15,27 +15,6 @@ public class RetrieveFileResponse implements Message {
         this.chunkLocations = chunkLocations;
     }
 
-    public RetrieveFileResponse(byte[] bytes) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
-
-            this.messageHeader = MessageHeader.deserialize(dataInputStream);
-            fileName = WireformatUtils.deserializeString(dataInputStream);
-            int numWireChunks = WireformatUtils.deserializeInt(dataInputStream);
-            for (int i = 0; i < numWireChunks; i++) {
-                ChunkLocation chunkLocation = ChunkLocation.deserialize(dataInputStream);
-                chunkLocations.add(chunkLocation);
-            }
-
-            byteArrayInputStream.close();
-            dataInputStream.close();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public int getProtocol() {
         return Protocol.RETRIEVE_FILE_RESPONSE;
@@ -65,6 +44,27 @@ public class RetrieveFileResponse implements Message {
         catch (IOException e) {
             e.printStackTrace();
             return new byte[0];
+        }
+    }
+
+    public RetrieveFileResponse(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+            this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            fileName = WireformatUtils.deserializeString(dataInputStream);
+            int numWireChunks = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numWireChunks; i++) {
+                ChunkLocation chunkLocation = ChunkLocation.deserialize(dataInputStream);
+                chunkLocations.add(chunkLocation);
+            }
+
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

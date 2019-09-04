@@ -20,12 +20,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 class ChunkStorage {
-    private final ChunkServer server;
-    private final Path storageDir;
     private static final String TMP_DIR = "/tmp";
     private static final String USER_NAME = System.getProperty("user.name");
-    private Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
+    private final ChunkServer server;
+    private final Path storageDir;
     private final List<Chunk> newChunks = new ArrayList<>();
+    private Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
 
     ChunkStorage(ChunkServer server, String serverName) {
         this.server = server;
@@ -84,7 +84,7 @@ class ChunkStorage {
         StoreChunk forwardStoreChunk = new StoreChunk(server.getServerAddress(),
             tcpSender.getSocket().getLocalSocketAddress().toString(),
             new cs555.dfs.wireformats.Chunk(fileName, sequence),
-            chunkData,nextNextServers);
+            chunkData, nextNextServers);
         tcpSender.send(forwardStoreChunk.getBytes());
     }
 
@@ -108,7 +108,7 @@ class ChunkStorage {
         byte[] bytes = chunk.readChunk();
         List<Integer> corruptSlices = new ArrayList<>();
         List<String> sliceChecksums = FileChunkifier.createSliceChecksums(bytes);
-        FileChunkifier.compareChecksums(chunk.getChecksums(), sliceChecksums, corruptSlices);
+        Utils.compareChecksums(chunk.getChecksums(), sliceChecksums, corruptSlices);
 
         TcpSender tcpSender = TcpSender.of(request.getServerAddress());
         if (tcpSender == null) {
@@ -127,6 +127,8 @@ class ChunkStorage {
                 tcpSender.getSocket().getLocalSocketAddress().toString(),
                 new cs555.dfs.wireformats.Chunk(fileName, sequence), corruptSlices);
             tcpSender.send(corruptChunk.getBytes());
+
+            server.sendMessageToController(corruptChunk);
         }
     }
 
@@ -137,7 +139,6 @@ class ChunkStorage {
             .findFirst()
             .orElse(null);
     }
-
 
     synchronized List<Chunk> getChunks() {
         return filesToChunks.values().stream()

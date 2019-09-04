@@ -20,31 +20,6 @@ public class MinorHeartbeat implements Message {
         this.newChunks = newChunks;
     }
 
-    public MinorHeartbeat(byte[] bytes) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
-
-            messageHeader = MessageHeader.deserialize(dataInputStream);
-            usableSpace = WireformatUtils.deserializeLong(dataInputStream);
-            totalNumberOfChunks = WireformatUtils.deserializeInt(dataInputStream);
-            int numNewChunks = WireformatUtils.deserializeInt(dataInputStream);
-            for (int i = 0; i < numNewChunks; i++) {
-                String fileName = WireformatUtils.deserializeString(dataInputStream);
-                int version = WireformatUtils.deserializeInt(dataInputStream);
-                int sequence = WireformatUtils.deserializeInt(dataInputStream);
-                long timeStampEpochSecond = WireformatUtils.deserializeLong(dataInputStream);
-                newChunks.add(new Chunk(fileName, version, sequence, Instant.ofEpochSecond(timeStampEpochSecond)));
-            }
-
-            byteArrayInputStream.close();
-            dataInputStream.close();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public int getProtocol() {
         return Protocol.MINOR_HEART_BEAT;
@@ -79,6 +54,31 @@ public class MinorHeartbeat implements Message {
         catch (IOException e) {
             e.printStackTrace();
             return new byte[0];
+        }
+    }
+
+    public MinorHeartbeat(byte[] bytes) {
+        try {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
+
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            usableSpace = WireformatUtils.deserializeLong(dataInputStream);
+            totalNumberOfChunks = WireformatUtils.deserializeInt(dataInputStream);
+            int numNewChunks = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numNewChunks; i++) {
+                String fileName = WireformatUtils.deserializeString(dataInputStream);
+                int version = WireformatUtils.deserializeInt(dataInputStream);
+                int sequence = WireformatUtils.deserializeInt(dataInputStream);
+                long timeStampEpochSecond = WireformatUtils.deserializeLong(dataInputStream);
+                newChunks.add(new Chunk(fileName, version, sequence, Instant.ofEpochSecond(timeStampEpochSecond)));
+            }
+
+            byteArrayInputStream.close();
+            dataInputStream.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

@@ -1,6 +1,7 @@
 package cs555.dfs.node.client;
 
 import cs555.dfs.transport.TcpSender;
+import cs555.dfs.util.ChunkData;
 import cs555.dfs.util.FileChunkifier;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.Chunk;
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
 
 class FileStorer {
     private final Client client;
-    private final List<FileChunkifier.FileDataChunk> fileDataChunks = new ArrayList<>();
+    private final List<ChunkData> chunkDataList = new ArrayList<>();
 
     FileStorer(Client client) {
         this.client = client;
@@ -24,17 +25,17 @@ class FileStorer {
     public void handleStoreChunkResponse(StoreChunkResponse response) {
         String fileName = response.getFileName();
         int chunkSequence = response.getChunkSequence();
-        FileChunkifier.FileDataChunk fileDataChunk;
+        ChunkData chunkData;
 
-        synchronized (fileDataChunks) {
-            FileChunkifier.FileDataChunk finderChunk = new FileChunkifier.FileDataChunk(fileName, chunkSequence);
-            int idx = fileDataChunks.indexOf(finderChunk);
+        synchronized (chunkDataList) {
+            ChunkData finderChunk = new ChunkData(fileName, chunkSequence);
+            int idx = chunkDataList.indexOf(finderChunk);
             if (idx == -1) {
-                Utils.error("fileDataChunks not found");
+                Utils.error("chunkDataList not found");
                 return;
             }
-            fileDataChunk = fileDataChunks.get(idx);
-            fileDataChunks.remove(fileDataChunk);
+            chunkData = chunkDataList.get(idx);
+            chunkDataList.remove(chunkData);
         }
         List<String> chunkServerAddresses = response.getChunkServerAddresses();
         if (chunkServerAddresses.isEmpty())
@@ -52,29 +53,28 @@ class FileStorer {
             .skip(1).collect(Collectors.toList());
 
         StoreChunk storeChunk = new StoreChunk(client.getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
-            new Chunk(fileName, fileDataChunk.sequence), fileDataChunk.fileData, nextServers);
+            new Chunk(fileName, chunkData.sequence), chunkData.data, nextServers);
         tcpSender.send(storeChunk.getBytes());
 
         sendNextStoreChunkRequest();
     }
 
-
     private void sendNextStoreChunkRequest() {
-        synchronized (fileDataChunks) {
-            if (!fileDataChunks.isEmpty()) {
-                FileChunkifier.FileDataChunk fileDataChunk = fileDataChunks.get(0);
+        synchronized (chunkDataList) {
+            if (!chunkDataList.isEmpty()) {
+                ChunkData chunkData = chunkDataList.get(0);
                 StoreChunkRequest request = new StoreChunkRequest(client.getServerAddress(),
                     client.getControllerTcpConnection().getLocalSocketAddress(),
-                    new Chunk(fileDataChunk.fileName, fileDataChunk.sequence));
+                    new Chunk(chunkData.fileName, chunkData.sequence));
                 client.getControllerTcpConnection().send(request.getBytes());
             }
         }
     }
 
     public void storeFile(Path path) {
-        synchronized (fileDataChunks) {
-            fileDataChunks.addAll(FileChunkifier.chunkifyFileToFileDataChunks(path));
-            if (!fileDataChunks.isEmpty()) {
+        synchronized (chunkDataList) {
+            chunkDataList.addAll(FileChunkifier.chunkifyFileToDataChunks(path));
+            if (!chunkDataList.isEmpty()) {
                 sendNextStoreChunkRequest();
             }
         }

@@ -31,12 +31,6 @@ public class ChunkServer implements Node {
         initMinorHeartbeatTimer();
     }
 
-    private void initMinorHeartbeatTimer() {
-        HeartbeatTimerTask heartbeatTimerTask = new HeartbeatTimerTask();
-        Timer timer = new Timer(true);
-        timer.schedule(heartbeatTimerTask, MINOR_HEARTBEAT_DELAY, MINOR_HEARTBEAT_DELAY);
-    }
-
     private void registerWithController(String controllerIp, int controllerPort) {
         try {
             Socket socket = new Socket(controllerIp, controllerPort);
@@ -49,48 +43,10 @@ public class ChunkServer implements Node {
         }
     }
 
-    @Override
-    public void onMessage(Message message) {
-        int protocol = message.getProtocol();
-        switch (protocol) {
-            case Protocol.STORE_CHUNK:
-                handleStoreChunk(message);
-                break;
-            case Protocol.RETRIEVE_CHUNK_REQUEST:
-                handleRetrieveChunkRequest(message);
-                break;
-            default:
-                throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
-        }
-    }
-
-    private void handleRetrieveChunkRequest(Message message) {
-        RetrieveChunkRequest request = (RetrieveChunkRequest) message;
-        Utils.debug("received: " + request);
-        chunkStorage.handleRetrieveChunkRequest(request);
-    }
-
-    private void handleStoreChunk(Message message) {
-        StoreChunk storeChunk = (StoreChunk) message;
-        Utils.debug("received: " + storeChunk);
-        chunkStorage.handleStoreChunk(storeChunk);
-
-    }
-
-    @Override
-    public String getNodeTypeAsString() {
-        return "ChunkServer";
-    }
-
-    @Override
-    public void registerNewTcpConnection(TcpConnection tcpConnection) {
-        connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
-        Utils.debug("registering tcp connection: " + tcpConnection.getRemoteSocketAddress());
-    }
-
-    @Override
-    public String getServerAddress() {
-        return Utils.getServerAddress(tcpServer);
+    private void initMinorHeartbeatTimer() {
+        HeartbeatTimerTask heartbeatTimerTask = new HeartbeatTimerTask();
+        Timer timer = new Timer(true);
+        timer.schedule(heartbeatTimerTask, MINOR_HEARTBEAT_DELAY, MINOR_HEARTBEAT_DELAY);
     }
 
     public static void main(String[] args) {
@@ -110,10 +66,53 @@ public class ChunkServer implements Node {
         System.exit(-1);
     }
 
-    private void sendMessageToController(Message message) {
-        controllerTcpConnection.send(message.getBytes());
+    @Override
+    public void onMessage(Message message) {
+        int protocol = message.getProtocol();
+        switch (protocol) {
+            case Protocol.STORE_CHUNK:
+                handleStoreChunk(message);
+                break;
+            case Protocol.RETRIEVE_CHUNK_REQUEST:
+                handleRetrieveChunkRequest(message);
+                break;
+            default:
+                throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
+        }
     }
 
+    private void handleStoreChunk(Message message) {
+        StoreChunk storeChunk = (StoreChunk) message;
+        Utils.debug("received: " + storeChunk);
+        chunkStorage.handleStoreChunk(storeChunk);
+
+    }
+
+    private void handleRetrieveChunkRequest(Message message) {
+        RetrieveChunkRequest request = (RetrieveChunkRequest) message;
+        Utils.debug("received: " + request);
+        chunkStorage.handleRetrieveChunkRequest(request);
+    }
+
+    @Override
+    public String getNodeTypeAsString() {
+        return "ChunkServer";
+    }
+
+    @Override
+    public void registerNewTcpConnection(TcpConnection tcpConnection) {
+        connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
+        Utils.debug("registering tcp connection: " + tcpConnection.getRemoteSocketAddress());
+    }
+
+    @Override
+    public String getServerAddress() {
+        return Utils.getServerAddress(tcpServer);
+    }
+
+    void sendMessageToController(Message message) {
+        controllerTcpConnection.send(message.getBytes());
+    }
 
     private class HeartbeatTimerTask extends TimerTask {
         private static final int MAJOR_HEARTBEAT_INTERVAL = 10;

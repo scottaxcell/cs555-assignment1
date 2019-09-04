@@ -1,6 +1,7 @@
 package cs555.dfs.node.client;
 
 import cs555.dfs.transport.TcpSender;
+import cs555.dfs.util.ChunkData;
 import cs555.dfs.util.FileChunkifier;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
@@ -17,8 +18,7 @@ import java.util.stream.Collectors;
 
 class FileReader {
     private final Client client;
-    private boolean isReading;
-    private final List<FileChunkifier.FileDataChunk> fileDataChunks = new ArrayList<>();
+    private final List<ChunkData> chunkDataList = new ArrayList<>();
     private final List<ChunkLocation> chunkLocations = new ArrayList<>();
     private final AtomicInteger numReceivedChunks = new AtomicInteger();
     private final AtomicInteger numExpectedChunks = new AtomicInteger();
@@ -31,11 +31,11 @@ class FileReader {
         String fileName = response.getFileName();
         int sequence = response.getSequence();
         byte[] fileData = response.getFileData();
-        FileChunkifier.FileDataChunk fileDataChunk = new FileChunkifier.FileDataChunk(fileName, sequence, fileData);
+        ChunkData chunkData = new ChunkData(fileName, sequence, fileData);
 
-        synchronized (fileDataChunks) {
-            if (!fileDataChunks.contains(fileDataChunk)) {
-                fileDataChunks.add(fileDataChunk);
+        synchronized (chunkDataList) {
+            if (!chunkDataList.contains(chunkData)) {
+                chunkDataList.add(chunkData);
             }
             Utils.debug("received: " + numReceivedChunks.get());
             Utils.debug("expected: " + numExpectedChunks.get());
@@ -48,6 +48,26 @@ class FileReader {
         }
 
         sendNextRetrieveChunkRequest();
+    }
+
+    private void writeFile() {
+        synchronized (chunkDataList) {
+            if (chunkDataList.isEmpty())
+                return;
+            List<byte[]> list = chunkDataList.stream()
+                .sorted(Comparator.comparingInt(ChunkData::getSequence))
+                .map(ChunkData::getData)
+                .collect(Collectors.toList());
+            byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
+            Path path = Paths.get("./bogus.txt_retrieved");
+            try {
+                Files.createDirectories(path.getParent());
+                Files.write(path, bytes);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void sendNextRetrieveChunkRequest() {
@@ -73,32 +93,12 @@ class FileReader {
         }
     }
 
-    private void writeFile() {
-        synchronized (fileDataChunks) {
-            if (fileDataChunks.isEmpty())
-                return;
-            List<byte[]> list = fileDataChunks.stream()
-                .sorted(Comparator.comparingInt(FileChunkifier.FileDataChunk::getSequence))
-                .map(FileChunkifier.FileDataChunk::getFileData)
-                .collect(Collectors.toList());
-            byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
-            Path path = Paths.get("./bogus.txt_retrieved");
-            try {
-                Files.createDirectories(path.getParent());
-                Files.write(path, bytes);
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     public void handleCorruptChunk(CorruptChunk corruptChunk) {
         synchronized (chunkLocations) {
             chunkLocations.clear();
         }
-        synchronized (fileDataChunks) {
-            fileDataChunks.clear();
+        synchronized (chunkDataList) {
+            chunkDataList.clear();
         }
         numReceivedChunks.set(0);
         numExpectedChunks.set(0);

@@ -57,90 +57,6 @@ public class Client implements Node {
         handleCmdLineInput();
     }
 
-    public TcpConnection getControllerTcpConnection() {
-        return controllerTcpConnection;
-    }
-
-    @Override
-    public void onMessage(Message message) {
-        int protocol = message.getProtocol();
-        switch (protocol) {
-            case Protocol.STORE_CHUNK_RESPONSE:
-                handleStoreChunkResponse(message);
-                break;
-            case Protocol.RETRIEVE_FILE_RESPONSE:
-                handleRetrieveFileResponse(message);
-                break;
-            case Protocol.RETRIEVE_CHUNK_RESPONSE:
-                handleRetrieveChunkResponse(message);
-                break;
-            case Protocol.CHUNK_CORRUPTION:
-                handleChunkCorruption(message);
-                break;
-            default:
-                throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
-        }
-    }
-
-    private void handleChunkCorruption(Message message) {
-        CorruptChunk corruptChunk = (CorruptChunk) message;
-        Utils.debug("received: " + corruptChunk);
-        fileReader.handleCorruptChunk(corruptChunk);
-    }
-
-    private void handleRetrieveChunkResponse(Message message) {
-        RetrieveChunkResponse response = (RetrieveChunkResponse) message;
-        Utils.debug("received: " + response);
-        fileReader.handleRetrieveChunkResponse(response);
-    }
-
-    private void handleRetrieveFileResponse(Message message) {
-        RetrieveFileResponse response = (RetrieveFileResponse) message;
-        Utils.debug("received: " + response);
-        fileReader.handleRetrieveFileResponse(response);
-    }
-
-    private TcpSender getTcpSenderFromServerAddress(String serverAddress) {
-//        TcpConnection tcpConnection = connections.get(serverAddress);
-//        if (tcpConnection != null)
-//            return tcpConnection.getTcpSender();
-//        else {
-//        String[] splitServerAddress = Utils.splitServerAddress(serverAddress);
-//        try {
-//            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
-//            return new TcpSender(socket);
-//        }
-//        catch (IOException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//        }
-        return TcpSender.of(serverAddress);
-    }
-
-    private void handleStoreChunkResponse(Message message) {
-        StoreChunkResponse response = (StoreChunkResponse) message;
-        Utils.debug("received: " + response);
-        fileStorer.handleStoreChunkResponse(response);
-
-    }
-
-    @Override
-    public String getNodeTypeAsString() {
-        return "Client";
-    }
-
-    @Override
-    public void registerNewTcpConnection(TcpConnection tcpConnection) {
-        connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
-        Utils.debug("registering tcp connection: " + tcpConnection.getRemoteSocketAddress());
-    }
-
-    @Override
-    public String getServerAddress() {
-        return Utils.getServerAddress(tcpServer);
-    }
-
     private void handleCmdLineInput() {
         printMenu();
 
@@ -189,13 +105,22 @@ public class Client implements Node {
         }
     }
 
-    private void retrieveFile(Path path) {
-        RetrieveFileRequest request = new RetrieveFileRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path));
-        controllerTcpConnection.send(request.getBytes());
+    private static void printMenu() {
+        Utils.out("****************\n");
+        Utils.out("h -- print menu\n");
+        Utils.out("sf -- store file\n");
+        Utils.out("rf -- read file\n");
+        Utils.out("q  -- quit\n");
+        Utils.out("****************\n");
     }
 
     private void storeFile(Path path) {
         fileStorer.storeFile(path);
+    }
+
+    private void retrieveFile(Path path) {
+        RetrieveFileRequest request = new RetrieveFileRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path));
+        controllerTcpConnection.send(request.getBytes());
     }
 
     public static void main(String[] args) {
@@ -208,17 +133,92 @@ public class Client implements Node {
         new Client(controllerIp, controllerPort);
     }
 
-    private static void printMenu() {
-        Utils.out("****************\n");
-        Utils.out("h -- print menu\n");
-        Utils.out("sf -- store file\n");
-        Utils.out("rf -- read file\n");
-        Utils.out("q  -- quit\n");
-        Utils.out("****************\n");
-    }
-
     private static void printHelpAndExit() {
         Utils.out("USAGE: java Client <controller-host> <controller-port>\n");
         System.exit(-1);
+    }
+
+    public TcpConnection getControllerTcpConnection() {
+        return controllerTcpConnection;
+    }
+
+    @Override
+    public void onMessage(Message message) {
+        int protocol = message.getProtocol();
+        switch (protocol) {
+            case Protocol.STORE_CHUNK_RESPONSE:
+                handleStoreChunkResponse(message);
+                break;
+            case Protocol.RETRIEVE_FILE_RESPONSE:
+                handleRetrieveFileResponse(message);
+                break;
+            case Protocol.RETRIEVE_CHUNK_RESPONSE:
+                handleRetrieveChunkResponse(message);
+                break;
+            case Protocol.CORRUPT_CHUNK:
+                handleChunkCorruption(message);
+                break;
+            default:
+                throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
+        }
+    }
+
+    private void handleStoreChunkResponse(Message message) {
+        StoreChunkResponse response = (StoreChunkResponse) message;
+        Utils.debug("received: " + response);
+        fileStorer.handleStoreChunkResponse(response);
+
+    }
+
+    private void handleRetrieveFileResponse(Message message) {
+        RetrieveFileResponse response = (RetrieveFileResponse) message;
+        Utils.debug("received: " + response);
+        fileReader.handleRetrieveFileResponse(response);
+    }
+
+    private void handleRetrieveChunkResponse(Message message) {
+        RetrieveChunkResponse response = (RetrieveChunkResponse) message;
+        Utils.debug("received: " + response);
+        fileReader.handleRetrieveChunkResponse(response);
+    }
+
+    private void handleChunkCorruption(Message message) {
+        CorruptChunk corruptChunk = (CorruptChunk) message;
+        Utils.debug("received: " + corruptChunk);
+        fileReader.handleCorruptChunk(corruptChunk);
+    }
+
+    @Override
+    public String getNodeTypeAsString() {
+        return "Client";
+    }
+
+    @Override
+    public void registerNewTcpConnection(TcpConnection tcpConnection) {
+        connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
+        Utils.debug("registering tcp connection: " + tcpConnection.getRemoteSocketAddress());
+    }
+
+    @Override
+    public String getServerAddress() {
+        return Utils.getServerAddress(tcpServer);
+    }
+
+    private TcpSender getTcpSenderFromServerAddress(String serverAddress) {
+//        TcpConnection tcpConnection = connections.get(serverAddress);
+//        if (tcpConnection != null)
+//            return tcpConnection.getTcpSender();
+//        else {
+//        String[] splitServerAddress = Utils.splitServerAddress(serverAddress);
+//        try {
+//            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
+//            return new TcpSender(socket);
+//        }
+//        catch (IOException e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+//        }
+        return TcpSender.of(serverAddress);
     }
 }

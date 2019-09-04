@@ -20,6 +20,18 @@ public class TcpSender {
         }
     }
 
+    public static TcpSender of(String remoteServerAddress) {
+        String[] splitServerAddress = Utils.splitServerAddress(remoteServerAddress);
+        try {
+            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
+            return new TcpSender(socket);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public synchronized void send(byte[] data) {
         try {
             int dataLength = data.length;
@@ -34,17 +46,5 @@ public class TcpSender {
 
     public Socket getSocket() {
         return socket;
-    }
-
-    public static TcpSender of(String remoteServerAddress) {
-        String[] splitServerAddress = Utils.splitServerAddress(remoteServerAddress);
-        try {
-            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
-            return new TcpSender(socket);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 }
