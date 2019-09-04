@@ -76,27 +76,27 @@ public class Controller implements Node {
         Utils.debug("received: " + request);
 
         String fileName = request.getFileName();
-        List<WireChunk> wireChunks = new ArrayList<>();
+        List<ChunkLocation> chunkLocations = new ArrayList<>();
         synchronized (liveChunkServers) {
             for (LiveChunkServer lcs : liveChunkServers) {
                 List<Chunk> chunks = lcs.getChunks(fileName);
                 if (chunks == null)
                     continue;
                 for (Chunk c : chunks) {
-                    WireChunk wireChunk = new WireChunk(fileName, c.getSequence(), lcs.getServerAddress());
-                    if (!wireChunks.contains(wireChunk))
-                        wireChunks.add(wireChunk);
+                    ChunkLocation chunkLocation = new ChunkLocation(new cs555.dfs.wireformats.Chunk(fileName, c.getSequence()), lcs.getServerAddress());
+                    if (!chunkLocations.contains(chunkLocation))
+                        chunkLocations.add(chunkLocation);
                 }
             }
         }
 
-        if (wireChunks.isEmpty())
+        if (chunkLocations.isEmpty())
             return;
 
         String sourceAddress = request.getSourceAddress();
         TcpConnection tcpConnection = connections.get(sourceAddress);
 
-        RetrieveFileResponse response = new RetrieveFileResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, wireChunks);
+        RetrieveFileResponse response = new RetrieveFileResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, chunkLocations);
         tcpConnection.send(response.getBytes());
     }
 
@@ -104,7 +104,7 @@ public class Controller implements Node {
         StoreChunkRequest request = (StoreChunkRequest) message;
         Utils.debug("received: " + request);
         String fileName = request.getFileName();
-        int chunkSequence = request.getChunkSequence();
+        int chunkSequence = request.getSequence();
 
         List<LiveChunkServer> validChunkServers;
         synchronized (liveChunkServers) {
@@ -128,7 +128,8 @@ public class Controller implements Node {
         String sourceAddress = request.getSourceAddress();
         TcpConnection tcpConnection = connections.get(sourceAddress);
 
-        StoreChunkResponse response = new StoreChunkResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, chunkSequence, validServerAddresses);
+        StoreChunkResponse response = new StoreChunkResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(),
+            new cs555.dfs.wireformats.Chunk(fileName, chunkSequence), validServerAddresses);
         tcpConnection.send(response.getBytes());
     }
 

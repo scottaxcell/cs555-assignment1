@@ -2,22 +2,22 @@ package cs555.dfs.wireformats;
 
 import java.io.*;
 
-public class RetrieveChunkRequest implements Message {
-    private MessageHeader messageHeader;
-    private Chunk chunk;
+public class Chunk {
+    private String fileName;
+    private int sequence;
 
-    public RetrieveChunkRequest(String serverAddress, String sourceAddress, Chunk chunk) {
-        this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
-        this.chunk = chunk;
+    public Chunk(String fileName, int sequence) {
+        this.fileName = fileName;
+        this.sequence = sequence;
     }
 
-    public RetrieveChunkRequest(byte[] bytes) {
+    public Chunk(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-            messageHeader = MessageHeader.deserialize(dataInputStream);
-            chunk = Chunk.deserialize(dataInputStream);
+            fileName = WireformatUtils.deserializeString(dataInputStream);
+            sequence = WireformatUtils.deserializeInt(dataInputStream);
 
             byteArrayInputStream.close();
             dataInputStream.close();
@@ -27,19 +27,19 @@ public class RetrieveChunkRequest implements Message {
         }
     }
 
-    @Override
-    public int getProtocol() {
-        return Protocol.RETRIEVE_CHUNK_REQUEST;
+    public static Chunk deserialize(DataInputStream dataInputStream) {
+        String fileName = WireformatUtils.deserializeString(dataInputStream);
+        int sequence = WireformatUtils.deserializeInt(dataInputStream);
+        return new Chunk(fileName, sequence);
     }
 
-    @Override
     public byte[] getBytes() {
         try {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-            messageHeader.serialize(dataOutputStream);
-            chunk.serialize(dataOutputStream);
+            WireformatUtils.serializeString(dataOutputStream, fileName);
+            WireformatUtils.serializeInt(dataOutputStream, sequence);
 
             dataOutputStream.flush();
 
@@ -58,21 +58,22 @@ public class RetrieveChunkRequest implements Message {
 
     @Override
     public String toString() {
-        return "RetrieveChunkRequest{" +
-            "messageHeader=" + messageHeader +
-            ", chunk=" + chunk +
+        return "Chunk{" +
+            "fileName='" + fileName + '\'' +
+            ", sequence=" + sequence +
             '}';
     }
 
     public String getFileName() {
-        return chunk.getFileName();
+        return fileName;
     }
 
     public int getSequence() {
-        return chunk.getSequence();
+        return sequence;
     }
 
-    public String getServerAddress() {
-        return messageHeader.getServerAddress();
+    public void serialize(DataOutputStream dataOutputStream) {
+        WireformatUtils.serializeString(dataOutputStream, fileName);
+        WireformatUtils.serializeInt(dataOutputStream, sequence);
     }
 }

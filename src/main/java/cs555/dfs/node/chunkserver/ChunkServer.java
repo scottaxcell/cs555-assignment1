@@ -99,13 +99,13 @@ public class ChunkServer implements Node {
 
         if (corruptSlices.isEmpty()) {
             RetrieveChunkResponse response = new RetrieveChunkResponse(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
-                fileName, sequence, bytes);
+                new cs555.dfs.wireformats.Chunk(fileName, sequence), bytes);
             tcpSender.send(response.getBytes());
         }
         else {
-            ChunkCorruption chunkCorruption = new ChunkCorruption(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
-                fileName, sequence, corruptSlices);
-            tcpSender.send(chunkCorruption.getBytes());
+            CorruptChunk corruptChunk = new CorruptChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
+                new cs555.dfs.wireformats.Chunk(fileName, sequence), corruptSlices);
+            tcpSender.send(corruptChunk.getBytes());
         }
     }
 
@@ -122,7 +122,7 @@ public class ChunkServer implements Node {
         Utils.debug("received: " + storeChunk);
 
         String fileName = storeChunk.getFileName();
-        int sequence = storeChunk.getChunkSequence();
+        int sequence = storeChunk.getSequence();
         Path path = generateWritePath(fileName, sequence);
 
         Chunk chunk = new Chunk(fileName, sequence, path);
@@ -160,7 +160,7 @@ public class ChunkServer implements Node {
             .skip(1).collect(Collectors.toList());
 
         StoreChunk forwardStoreChunk = new StoreChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
-            fileName, sequence, chunkData, nextNextServers);
+            new cs555.dfs.wireformats.Chunk(fileName, sequence), chunkData, nextNextServers);
         tcpSender.send(forwardStoreChunk.getBytes());
     }
 

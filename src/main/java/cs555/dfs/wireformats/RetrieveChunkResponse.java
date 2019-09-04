@@ -4,14 +4,12 @@ import java.io.*;
 
 public class RetrieveChunkResponse implements Message {
     private MessageHeader messageHeader;
-    private String fileName;
-    private int sequence;
+    private Chunk chunk;
     private byte[] fileData;
 
-    public RetrieveChunkResponse(String serverAddress, String sourceAddress, String fileName, int sequence, byte[] fileData) {
+    public RetrieveChunkResponse(String serverAddress, String sourceAddress, Chunk chunk, byte[] fileData) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
-        this.fileName = fileName;
-        this.sequence = sequence;
+        this.chunk = chunk;
         this.fileData = fileData;
     }
 
@@ -20,9 +18,8 @@ public class RetrieveChunkResponse implements Message {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-            this.messageHeader = MessageHeader.deserialize(dataInputStream);
-            sequence = WireformatUtils.deserializeInt(dataInputStream);
-            fileName = WireformatUtils.deserializeString(dataInputStream);
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            chunk = Chunk.deserialize(dataInputStream);
             fileData = WireformatUtils.deserializeBytes(dataInputStream);
 
             byteArrayInputStream.close();
@@ -45,8 +42,7 @@ public class RetrieveChunkResponse implements Message {
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
             messageHeader.serialize(dataOutputStream);
-            WireformatUtils.serializeInt(dataOutputStream, sequence);
-            WireformatUtils.serializeString(dataOutputStream, fileName);
+            chunk.serialize(dataOutputStream);
             WireformatUtils.serializeBytes(dataOutputStream, fileData);
 
             dataOutputStream.flush();
@@ -68,18 +64,17 @@ public class RetrieveChunkResponse implements Message {
     public String toString() {
         return "RetrieveChunkResponse{" +
             "messageHeader=" + messageHeader +
-            ", fileName='" + fileName + '\'' +
-            ", sequence=" + sequence +
+            ", chunk=" + chunk +
             ", fileData.length=" + fileData.length +
             '}';
     }
 
     public String getFileName() {
-        return fileName;
+        return chunk.getFileName();
     }
 
     public int getSequence() {
-        return sequence;
+        return chunk.getSequence();
     }
 
     public byte[] getFileData() {

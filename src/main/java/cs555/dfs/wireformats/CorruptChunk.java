@@ -4,32 +4,28 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChunkCorruption implements Message {
+public class CorruptChunk implements Message {
     private MessageHeader messageHeader;
-    private String fileName;
-    private int sequence;
+    private Chunk chunk;
     private List<Integer> corruptSlices = new ArrayList<>();
 
-    public ChunkCorruption(String serverAddress, String sourceAddress, String fileName, int sequence, List<Integer> corruptSlices) {
+    public CorruptChunk(String serverAddress, String sourceAddress, Chunk chunk, List<Integer> corruptSlices) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
-        this.fileName = fileName;
-        this.sequence = sequence;
+        this.chunk = chunk;
         this.corruptSlices = corruptSlices;
     }
 
-    public ChunkCorruption(byte[] bytes) {
+    public CorruptChunk(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-            this.messageHeader = MessageHeader.deserialize(dataInputStream);
-            sequence = WireformatUtils.deserializeInt(dataInputStream);
-            fileName = WireformatUtils.deserializeString(dataInputStream);
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            chunk = Chunk.deserialize(dataInputStream);
             int numCorruptSlices = WireformatUtils.deserializeInt(dataInputStream);
-            for (int i = 0; i < numCorruptSlices; i++) {
-                int corruptSlice = WireformatUtils.deserializeInt(dataInputStream);
-                corruptSlices.add(corruptSlice);
-            }
+            for (int i = 0; i < numCorruptSlices; i++)
+                corruptSlices.add(WireformatUtils.deserializeInt(dataInputStream));
+
             byteArrayInputStream.close();
             dataInputStream.close();
         }
@@ -50,8 +46,7 @@ public class ChunkCorruption implements Message {
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
             messageHeader.serialize(dataOutputStream);
-            WireformatUtils.serializeInt(dataOutputStream, sequence);
-            WireformatUtils.serializeString(dataOutputStream, fileName);
+            chunk.serialize(dataOutputStream);
             WireformatUtils.serializeInt(dataOutputStream, corruptSlices.size());
             for (Integer corruptSlice : corruptSlices)
                 WireformatUtils.serializeInt(dataOutputStream, corruptSlice);
@@ -73,24 +68,19 @@ public class ChunkCorruption implements Message {
 
     @Override
     public String toString() {
-        return "ChunkCorruption{" +
+        return "CorruptChunk{" +
             "messageHeader=" + messageHeader +
-            ", fileName='" + fileName + '\'' +
-            ", sequence=" + sequence +
+            ", chunk=" + chunk +
             ", corruptSlices=" + corruptSlices +
             '}';
     }
 
     public String getFileName() {
-        return fileName;
+        return chunk.getFileName();
     }
 
     public int getSequence() {
-        return sequence;
-    }
-
-    public String getSourceAddess() {
-        return messageHeader.getSourceAddress();
+        return chunk.getSequence();
     }
 
     public String getServerAddress() {

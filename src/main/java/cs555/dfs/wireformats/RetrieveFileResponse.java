@@ -7,12 +7,12 @@ import java.util.List;
 public class RetrieveFileResponse implements Message {
     private MessageHeader messageHeader;
     private String fileName;
-    private List<WireChunk> wireChunks = new ArrayList<>();
+    private List<ChunkLocation> chunkLocations = new ArrayList<>();
 
-    public RetrieveFileResponse(String serverAddress, String sourceAddress, String fileName, List<WireChunk> wireChunks) {
+    public RetrieveFileResponse(String serverAddress, String sourceAddress, String fileName, List<ChunkLocation> chunkLocations) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.fileName = fileName;
-        this.wireChunks = wireChunks;
+        this.chunkLocations = chunkLocations;
     }
 
     public RetrieveFileResponse(byte[] bytes) {
@@ -24,8 +24,8 @@ public class RetrieveFileResponse implements Message {
             fileName = WireformatUtils.deserializeString(dataInputStream);
             int numWireChunks = WireformatUtils.deserializeInt(dataInputStream);
             for (int i = 0; i < numWireChunks; i++) {
-                WireChunk wireChunk = WireChunk.deserialize(dataInputStream);
-                wireChunks.add(wireChunk);
+                ChunkLocation chunkLocation = ChunkLocation.deserialize(dataInputStream);
+                chunkLocations.add(chunkLocation);
             }
 
             byteArrayInputStream.close();
@@ -49,9 +49,9 @@ public class RetrieveFileResponse implements Message {
 
             messageHeader.serialize(dataOutputStream);
             WireformatUtils.serializeString(dataOutputStream, fileName);
-            WireformatUtils.serializeInt(dataOutputStream, wireChunks.size());
-            for (WireChunk wireChunk : wireChunks)
-                wireChunk.serialize(dataOutputStream);
+            WireformatUtils.serializeInt(dataOutputStream, chunkLocations.size());
+            for (ChunkLocation chunkLocation : chunkLocations)
+                chunkLocation.serialize(dataOutputStream);
 
             dataOutputStream.flush();
 
@@ -73,7 +73,7 @@ public class RetrieveFileResponse implements Message {
         return "RetrieveFileResponse{" +
             "messageHeader=" + messageHeader +
             ", fileName='" + fileName + '\'' +
-            ", wireChunks=" + wireChunks +
+            ", chunkLocations=" + chunkLocations +
             '}';
     }
 
@@ -81,7 +81,7 @@ public class RetrieveFileResponse implements Message {
         return fileName;
     }
 
-    public List<WireChunk> getWireChunks() {
-        return wireChunks;
+    public List<ChunkLocation> getChunkLocations() {
+        return chunkLocations;
     }
 }

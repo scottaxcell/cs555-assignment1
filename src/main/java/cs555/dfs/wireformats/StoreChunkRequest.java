@@ -4,13 +4,11 @@ import java.io.*;
 
 public class StoreChunkRequest implements Message {
     private MessageHeader messageHeader;
-    private String fileName;
-    private int chunkSequence;
+    private Chunk chunk;
 
-    public StoreChunkRequest(String serverAddress, String sourceAddress, String fileName, int chunkSequence) {
+    public StoreChunkRequest(String serverAddress, String sourceAddress, Chunk chunk) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
-        this.fileName = fileName;
-        this.chunkSequence = chunkSequence;
+        this.chunk = chunk;
     }
 
     public StoreChunkRequest(byte[] bytes) {
@@ -18,9 +16,8 @@ public class StoreChunkRequest implements Message {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-            this.messageHeader = MessageHeader.deserialize(dataInputStream);
-            chunkSequence = WireformatUtils.deserializeInt(dataInputStream);
-            fileName = WireformatUtils.deserializeString(dataInputStream);
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            chunk = Chunk.deserialize(dataInputStream);
 
             byteArrayInputStream.close();
             dataInputStream.close();
@@ -41,12 +38,8 @@ public class StoreChunkRequest implements Message {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-            dataOutputStream.write(messageHeader.getBytes());
-
-            dataOutputStream.writeInt(chunkSequence);
-
-            dataOutputStream.writeInt(fileName.length());
-            dataOutputStream.write(fileName.getBytes());
+            messageHeader.serialize(dataOutputStream);
+            chunk.serialize(dataOutputStream);
 
             dataOutputStream.flush();
 
@@ -67,17 +60,16 @@ public class StoreChunkRequest implements Message {
     public String toString() {
         return "StoreChunkRequest{" +
             "messageHeader=" + messageHeader +
-            ", fileName='" + fileName + '\'' +
-            ", chunkSequence=" + chunkSequence +
+            ", chunk=" + chunk +
             '}';
     }
 
     public String getFileName() {
-        return fileName;
+        return chunk.getFileName();
     }
 
-    public int getChunkSequence() {
-        return chunkSequence;
+    public int getSequence() {
+        return chunk.getSequence();
     }
 
     public String getSourceAddress() {

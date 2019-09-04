@@ -6,14 +6,12 @@ import java.util.List;
 
 public class StoreChunkResponse implements Message {
     private MessageHeader messageHeader;
-    private String fileName;
-    private int chunkSequence;
+    private Chunk chunk;
     private List<String> chunkServerAddresses = new ArrayList<>();
 
-    public StoreChunkResponse(String serverAddress, String sourceAddress, String fileName, int chunkSequence, List<String> chunkServerAddresses) {
+    public StoreChunkResponse(String serverAddress, String sourceAddress, Chunk chunk, List<String> chunkServerAddresses) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
-        this.fileName = fileName;
-        this.chunkSequence = chunkSequence;
+        this.chunk = chunk;
         this.chunkServerAddresses = chunkServerAddresses;
     }
 
@@ -22,15 +20,11 @@ public class StoreChunkResponse implements Message {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-            this.messageHeader = MessageHeader.deserialize(dataInputStream);
-
-            chunkSequence = dataInputStream.readInt();
-            fileName = WireformatUtils.deserializeString(dataInputStream);
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            chunk = Chunk.deserialize(dataInputStream);
             int numAddresses = WireformatUtils.deserializeInt(dataInputStream);
-            for (int i = 0; i < numAddresses; i++) {
-                String address = WireformatUtils.deserializeString(dataInputStream);
-                chunkServerAddresses.add(address);
-            }
+            for (int i = 0; i < numAddresses; i++)
+                chunkServerAddresses.add(WireformatUtils.deserializeString(dataInputStream));
 
             byteArrayInputStream.close();
             dataInputStream.close();
@@ -51,19 +45,12 @@ public class StoreChunkResponse implements Message {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-            dataOutputStream.write(messageHeader.getBytes());
-
-            dataOutputStream.writeInt(chunkSequence);
-
-            dataOutputStream.writeInt(fileName.length());
-            dataOutputStream.write(fileName.getBytes());
-
+            messageHeader.serialize(dataOutputStream);
+            chunk.serialize(dataOutputStream);
             int numAddresses = chunkServerAddresses.size();
-            dataOutputStream.writeInt(numAddresses);
-            for (String chunkServerAddress : chunkServerAddresses) {
-                dataOutputStream.writeInt(chunkServerAddress.length());
-                dataOutputStream.write(chunkServerAddress.getBytes());
-            }
+            WireformatUtils.serializeInt(dataOutputStream, numAddresses);
+            for (String chunkServerAddress : chunkServerAddresses)
+                WireformatUtils.serializeString(dataOutputStream, chunkServerAddress);
 
             dataOutputStream.flush();
 
@@ -84,18 +71,17 @@ public class StoreChunkResponse implements Message {
     public String toString() {
         return "StoreChunkResponse{" +
             "messageHeader=" + messageHeader +
-            ", fileName='" + fileName + '\'' +
-            ", chunkSequence=" + chunkSequence +
+            ", chunk=" + chunk +
             ", chunkServerAddresses=" + chunkServerAddresses +
             '}';
     }
 
     public String getFileName() {
-        return fileName;
+        return chunk.getFileName();
     }
 
     public int getChunkSequence() {
-        return chunkSequence;
+        return chunk.getSequence();
     }
 
     public String getSourceAddress() {

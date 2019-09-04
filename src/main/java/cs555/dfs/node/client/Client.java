@@ -1,22 +1,20 @@
-package cs555.dfs.node;
+package cs555.dfs.node.client;
 
+import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpSender;
 import cs555.dfs.transport.TcpServer;
-import cs555.dfs.util.FileChunkifier;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Map;
+import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * USE CASES
@@ -36,15 +34,15 @@ import java.util.stream.Collectors;
  * - write chunks to file on disk -- user will specify location
  */
 public class Client implements Node {
+    private final FileReader fileReader;
+    private final FileStorer fileStorer;
     private final TcpServer tcpServer;
     private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>(); // key = remote socket address
     private TcpConnection controllerTcpConnection;
-    private List<FileChunkifier.FileDataChunk> currentFileDataChunks = new ArrayList<>();
-    private List<WireChunk> currentWireChunks = new ArrayList<>();
-    private AtomicInteger expectedNumberOfFileChunks = new AtomicInteger();
-    private AtomicInteger numberOfFileChunksRead = new AtomicInteger();
 
     public Client(String controllerIp, int controllerPort) {
+        fileReader = new FileReader(this);
+        fileStorer = new FileStorer(this);
         tcpServer = new TcpServer(0, this);
         new Thread(tcpServer).start();
 
@@ -57,6 +55,10 @@ public class Client implements Node {
         }
 
         handleCmdLineInput();
+    }
+
+    public TcpConnection getControllerTcpConnection() {
+        return controllerTcpConnection;
     }
 
     @Override
@@ -81,107 +83,21 @@ public class Client implements Node {
     }
 
     private void handleChunkCorruption(Message message) {
-        ChunkCorruption chunkCorruption = (ChunkCorruption) message;
-        Utils.debug("received: " + chunkCorruption);
-        synchronized (currentWireChunks) {
-            currentWireChunks.clear();
-        }
-        synchronized (currentFileDataChunks) {
-            currentFileDataChunks.clear();
-        }
-        numberOfFileChunksRead.set(0);
-        expectedNumberOfFileChunks.set(0);
+        CorruptChunk corruptChunk = (CorruptChunk) message;
+        Utils.debug("received: " + corruptChunk);
+        fileReader.handleCorruptChunk(corruptChunk);
     }
 
     private void handleRetrieveChunkResponse(Message message) {
         RetrieveChunkResponse response = (RetrieveChunkResponse) message;
         Utils.debug("received: " + response);
-
-        String fileName = response.getFileName();
-        int sequence = response.getSequence();
-        byte[] fileData = response.getFileData();
-        synchronized (currentFileDataChunks) {
-            FileChunkifier.FileDataChunk fileDataChunk = new FileChunkifier.FileDataChunk(fileName, sequence, fileData);
-            if (!currentFileDataChunks.contains(fileDataChunk)) {
-                currentFileDataChunks.add(fileDataChunk);
-            }
-            Utils.debug("received: " + numberOfFileChunksRead.get());
-            Utils.debug("expected: " + expectedNumberOfFileChunks.get());
-            if (numberOfFileChunksRead.incrementAndGet() == expectedNumberOfFileChunks.get()) {
-                Utils.debug("got all " + numberOfFileChunksRead.get() + " read chunks");
-                numberOfFileChunksRead.set(0);
-                writeFile();
-                return;
-            }
-        }
-        synchronized (currentWireChunks) {
-            if (!currentWireChunks.isEmpty()) {
-                WireChunk wireChunk = currentWireChunks.get(0);
-                String serverAddress = wireChunk.getServerAddress();
-
-                TcpSender tcpSender = getTcpSenderFromServerAddress(serverAddress);
-                if (tcpSender == null) {
-                    Utils.error("tcpServer is null");
-                    return;
-                }
-
-                RetrieveChunkRequest request = new RetrieveChunkRequest(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
-                    wireChunk.getFileName(), wireChunk.getSequence());
-                tcpSender.send(request.getBytes());
-
-                currentWireChunks.remove(wireChunk);
-            }
-        }
-    }
-
-    private void writeFile() {
-        synchronized (currentFileDataChunks) {
-            if (currentFileDataChunks.isEmpty())
-                return;
-            List<byte[]> list = currentFileDataChunks.stream()
-                .sorted(Comparator.comparingInt(FileChunkifier.FileDataChunk::getSequence))
-                .map(FileChunkifier.FileDataChunk::getFileData)
-                .collect(Collectors.toList());
-            byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
-            Path path = Paths.get("./bogus.txt_retrieved");
-            try {
-                Files.createDirectories(path.getParent());
-                Files.write(path, bytes);
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        fileReader.handleRetrieveChunkResponse(response);
     }
 
     private void handleRetrieveFileResponse(Message message) {
         RetrieveFileResponse response = (RetrieveFileResponse) message;
         Utils.debug("received: " + response);
-
-        synchronized (currentWireChunks) {
-            currentWireChunks = response.getWireChunks();
-            if (currentWireChunks.isEmpty())
-                return;
-
-            expectedNumberOfFileChunks.set(currentWireChunks.size());
-
-            WireChunk wireChunk = currentWireChunks.get(0);
-            String fileName = wireChunk.getFileName();
-            int sequence = wireChunk.getSequence();
-            String serverAddress = wireChunk.getServerAddress();
-
-            TcpSender tcpSender = getTcpSenderFromServerAddress(serverAddress);
-            if (tcpSender == null) {
-                Utils.error("tcpServer is null");
-                return;
-            }
-
-            RetrieveChunkRequest request = new RetrieveChunkRequest(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
-                fileName, sequence);
-            tcpSender.send(request.getBytes());
-
-            currentWireChunks.remove(wireChunk);
-        }
+        fileReader.handleRetrieveFileResponse(response);
     }
 
     private TcpSender getTcpSenderFromServerAddress(String serverAddress) {
@@ -205,40 +121,8 @@ public class Client implements Node {
     private void handleStoreChunkResponse(Message message) {
         StoreChunkResponse response = (StoreChunkResponse) message;
         Utils.debug("received: " + response);
+        fileStorer.handleStoreChunkResponse(response);
 
-        String fileName = response.getFileName();
-        int chunkSequence = response.getChunkSequence();
-        FileChunkifier.FileDataChunk fileDataChunk;
-        synchronized (currentFileDataChunks) {
-            FileChunkifier.FileDataChunk finderChunk = new FileChunkifier.FileDataChunk(fileName, chunkSequence);
-            int idx = currentFileDataChunks.indexOf(finderChunk);
-            if (idx == -1) {
-                Utils.error("fileDataChunks not found");
-                return;
-            }
-            fileDataChunk = currentFileDataChunks.get(idx);
-            currentFileDataChunks.remove(fileDataChunk);
-        }
-        List<String> chunkServerAddresses = response.getChunkServerAddresses();
-        if (chunkServerAddresses.isEmpty())
-            return;
-
-        String firstChunkServerAddress = chunkServerAddresses.get(0);
-
-        TcpSender tcpSender = getTcpSenderFromServerAddress(firstChunkServerAddress);
-        if (tcpSender == null) {
-            Utils.error("tcpServer is null");
-            return;
-        }
-
-        List<String> nextServers = chunkServerAddresses.stream()
-            .skip(1).collect(Collectors.toList());
-
-        StoreChunk storeChunk = new StoreChunk(getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
-            fileName, fileDataChunk.sequence, fileDataChunk.fileData, nextServers);
-        tcpSender.send(storeChunk.getBytes());
-
-        sendNextStoreChunkRequest();
     }
 
     @Override
@@ -311,23 +195,7 @@ public class Client implements Node {
     }
 
     private void storeFile(Path path) {
-        synchronized (currentFileDataChunks) {
-            currentFileDataChunks = Collections.synchronizedList(FileChunkifier.chunkifyFileToFileDataChunks(path));
-            if (!currentFileDataChunks.isEmpty()) {
-                sendNextStoreChunkRequest();
-            }
-        }
-    }
-
-    private void sendNextStoreChunkRequest() {
-        synchronized (currentFileDataChunks) {
-            if (!currentFileDataChunks.isEmpty()) {
-                FileChunkifier.FileDataChunk fileDataChunk = currentFileDataChunks.get(0);
-                StoreChunkRequest request = new StoreChunkRequest(getServerAddress(),
-                    controllerTcpConnection.getLocalSocketAddress(), fileDataChunk.fileName, fileDataChunk.sequence);
-                controllerTcpConnection.send(request.getBytes());
-            }
-        }
+        fileStorer.storeFile(path);
     }
 
     public static void main(String[] args) {

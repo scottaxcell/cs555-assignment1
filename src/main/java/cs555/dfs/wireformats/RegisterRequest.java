@@ -6,7 +6,7 @@ public class RegisterRequest implements Message {
     private MessageHeader messageHeader;
 
     public RegisterRequest(String serverAddress, String sourceAdress) {
-        this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAdress);
+        messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAdress);
     }
 
     public RegisterRequest(byte[] bytes) {

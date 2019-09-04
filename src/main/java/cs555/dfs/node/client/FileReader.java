@@ -1,0 +1,134 @@
+package cs555.dfs.node.client;
+
+import cs555.dfs.transport.TcpSender;
+import cs555.dfs.util.FileChunkifier;
+import cs555.dfs.util.Utils;
+import cs555.dfs.wireformats.*;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+class FileReader {
+    private final Client client;
+    private boolean isReading;
+    private final List<FileChunkifier.FileDataChunk> fileDataChunks = new ArrayList<>();
+    private final List<ChunkLocation> chunkLocations = new ArrayList<>();
+    private final AtomicInteger numReceivedChunks = new AtomicInteger();
+    private final AtomicInteger numExpectedChunks = new AtomicInteger();
+
+    FileReader(Client client) {
+        this.client = client;
+    }
+
+    void handleRetrieveChunkResponse(RetrieveChunkResponse response) {
+        String fileName = response.getFileName();
+        int sequence = response.getSequence();
+        byte[] fileData = response.getFileData();
+        FileChunkifier.FileDataChunk fileDataChunk = new FileChunkifier.FileDataChunk(fileName, sequence, fileData);
+
+        synchronized (fileDataChunks) {
+            if (!fileDataChunks.contains(fileDataChunk)) {
+                fileDataChunks.add(fileDataChunk);
+            }
+            Utils.debug("received: " + numReceivedChunks.get());
+            Utils.debug("expected: " + numExpectedChunks.get());
+            if (numReceivedChunks.incrementAndGet() == numExpectedChunks.get()) {
+                Utils.debug("got all " + numReceivedChunks.get() + " chunks");
+                numReceivedChunks.set(0);
+                writeFile();
+                return;
+            }
+        }
+
+        sendNextRetrieveChunkRequest();
+    }
+
+    private void sendNextRetrieveChunkRequest() {
+        synchronized (chunkLocations) {
+            if (!chunkLocations.isEmpty()) {
+                ChunkLocation chunkLocation = chunkLocations.get(0);
+                String serverAddress = chunkLocation.getServerAddress();
+
+                TcpSender tcpSender = TcpSender.of(serverAddress);
+                if (tcpSender == null) {
+                    Utils.error("tcpServer is null");
+                    return;
+                }
+
+                RetrieveChunkRequest request = new RetrieveChunkRequest(client.getServerAddress(),
+                    tcpSender.getSocket().getLocalSocketAddress().toString(),
+                    new cs555.dfs.wireformats.Chunk(chunkLocation.getFileName(),
+                        chunkLocation.getSequence()));
+                tcpSender.send(request.getBytes());
+
+                chunkLocations.remove(chunkLocation);
+            }
+        }
+    }
+
+    private void writeFile() {
+        synchronized (fileDataChunks) {
+            if (fileDataChunks.isEmpty())
+                return;
+            List<byte[]> list = fileDataChunks.stream()
+                .sorted(Comparator.comparingInt(FileChunkifier.FileDataChunk::getSequence))
+                .map(FileChunkifier.FileDataChunk::getFileData)
+                .collect(Collectors.toList());
+            byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
+            Path path = Paths.get("./bogus.txt_retrieved");
+            try {
+                Files.createDirectories(path.getParent());
+                Files.write(path, bytes);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void handleCorruptChunk(CorruptChunk corruptChunk) {
+        synchronized (chunkLocations) {
+            chunkLocations.clear();
+        }
+        synchronized (fileDataChunks) {
+            fileDataChunks.clear();
+        }
+        numReceivedChunks.set(0);
+        numExpectedChunks.set(0);
+    }
+
+    public void handleRetrieveFileResponse(RetrieveFileResponse response) {
+        synchronized (chunkLocations) {
+            chunkLocations.addAll(response.getChunkLocations());
+            if (chunkLocations.isEmpty())
+                return;
+
+            numExpectedChunks.set(chunkLocations.size());
+
+            ChunkLocation chunkLocation = chunkLocations.get(0);
+            String fileName = chunkLocation.getFileName();
+            int sequence = chunkLocation.getSequence();
+            String serverAddress = chunkLocation.getServerAddress();
+
+            TcpSender tcpSender = TcpSender.of(serverAddress);
+            if (tcpSender == null) {
+                Utils.error("tcpServer is null");
+                return;
+            }
+
+            RetrieveChunkRequest request = new RetrieveChunkRequest(client.getServerAddress(),
+                tcpSender.getSocket().getLocalSocketAddress().toString(),
+                new Chunk(fileName, sequence));
+            tcpSender.send(request.getBytes());
+
+            chunkLocations.remove(chunkLocation);
+        }
+    }
+}

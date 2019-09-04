@@ -4,4 +4,4 @@
 CLASSES_DIR=$(pwd)/build/classes/java/main
 
 cd $CLASSES_DIR
-java -cp . cs555.dfs.node.Client tokyo 50321
+java -cp . cs555.dfs.node.client.Client tokyo 50321

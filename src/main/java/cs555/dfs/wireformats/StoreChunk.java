@@ -6,15 +6,13 @@ import java.util.List;
 
 public class StoreChunk implements Message {
     private MessageHeader messageHeader;
-    private String fileName;
-    private int chunkSequence;
+    private Chunk chunk;
     private byte[] fileData;
     private List<String> nextServers = new ArrayList<>();
 
-    public StoreChunk(String serverAddress, String sourceAddress, String fileName, int chunkSequence, byte[] fileData, List<String> nextServers) {
+    public StoreChunk(String serverAddress, String sourceAddress, Chunk chunk, byte[] fileData, List<String> nextServers) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
-        this.fileName = fileName;
-        this.chunkSequence = chunkSequence;
+        this.chunk = chunk;
         this.fileData = fileData;
         this.nextServers = nextServers;
     }
@@ -24,10 +22,9 @@ public class StoreChunk implements Message {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-            this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            messageHeader = MessageHeader.deserialize(dataInputStream);
+            chunk = Chunk.deserialize(dataInputStream);
 
-            chunkSequence = dataInputStream.readInt();
-            fileName = WireformatUtils.deserializeString(dataInputStream);
             fileData = WireformatUtils.deserializeBytes(dataInputStream);
             int numServers = WireformatUtils.deserializeInt(dataInputStream);
             for (int i = 0; i < numServers; i++) {
@@ -54,21 +51,12 @@ public class StoreChunk implements Message {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-            dataOutputStream.write(messageHeader.getBytes());
-
-            dataOutputStream.writeInt(chunkSequence);
-
-            dataOutputStream.writeInt(fileName.length());
-            dataOutputStream.write(fileName.getBytes());
-
-            dataOutputStream.writeInt(fileData.length);
-            dataOutputStream.write(fileData);
-
-            dataOutputStream.writeInt(nextServers.size());
-            for (String server : nextServers) {
-                dataOutputStream.writeInt(server.length());
-                dataOutputStream.write(server.getBytes());
-            }
+            messageHeader.serialize(dataOutputStream);
+            chunk.serialize(dataOutputStream);
+            WireformatUtils.serializeBytes(dataOutputStream, fileData);
+            WireformatUtils.serializeInt(dataOutputStream, nextServers.size());
+            for (String server : nextServers)
+                WireformatUtils.serializeString(dataOutputStream, server);
 
             dataOutputStream.flush();
 
@@ -89,19 +77,18 @@ public class StoreChunk implements Message {
     public String toString() {
         return "StoreChunk{" +
             "messageHeader=" + messageHeader +
-            ", fileName='" + fileName + '\'' +
-            ", chunkSequence=" + chunkSequence +
+            ", chunk=" + chunk +
             ", fileData.length=" + fileData.length +
             ", nextServers=" + nextServers +
             '}';
     }
 
     public String getFileName() {
-        return fileName;
+        return chunk.getFileName();
     }
 
-    public int getChunkSequence() {
-        return chunkSequence;
+    public int getSequence() {
+        return chunk.getSequence();
     }
 
     public byte[] getFileData() {
