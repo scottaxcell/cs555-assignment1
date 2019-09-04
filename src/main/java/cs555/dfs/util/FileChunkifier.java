@@ -172,12 +172,14 @@ public class FileChunkifier {
         }
 
         while (iterator1.hasNext()) {
+            iterator1.next();
             equal = false;
             corruptSlices.add(slice1);
             slice1++;
         }
 
         while (iterator2.hasNext()) {
+            iterator2.next();
             equal = false;
             corruptSlices.add(slice2);
             slice2++;
