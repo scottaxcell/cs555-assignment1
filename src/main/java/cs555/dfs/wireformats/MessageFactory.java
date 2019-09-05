@@ -34,6 +34,8 @@ public class MessageFactory {
                 return new RetrieveChunkResponse(data);
             case Protocol.CORRUPT_CHUNK:
                 return new CorruptChunk(data);
+            case Protocol.REPLICATE_CHUNK:
+                return new ReplicateChunk(data);
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }

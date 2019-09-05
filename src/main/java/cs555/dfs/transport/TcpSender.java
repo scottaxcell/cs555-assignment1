@@ -47,4 +47,8 @@ public class TcpSender {
     public Socket getSocket() {
         return socket;
     }
+
+    public String getLocalSocketAddress() {
+        return socket.getLocalSocketAddress().toString();
+    }
 }

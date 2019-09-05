@@ -52,7 +52,7 @@ class FileStorer {
         List<String> nextServers = chunkServerAddresses.stream()
             .skip(1).collect(Collectors.toList());
 
-        StoreChunk storeChunk = new StoreChunk(client.getServerAddress(), tcpSender.getSocket().getLocalSocketAddress().toString(),
+        StoreChunk storeChunk = new StoreChunk(client.getServerAddress(), tcpSender.getLocalSocketAddress(),
             new Chunk(fileName, chunkData.sequence), chunkData.data, nextServers);
         tcpSender.send(storeChunk.getBytes());
 

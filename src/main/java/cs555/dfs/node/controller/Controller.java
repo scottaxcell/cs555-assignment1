@@ -3,6 +3,7 @@ package cs555.dfs.node.controller;
 import cs555.dfs.node.Chunk;
 import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
+import cs555.dfs.transport.TcpSender;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
@@ -193,7 +194,24 @@ public class Controller implements Node {
 
         String fileName = corruptChunk.getFileName();
         int sequence = corruptChunk.getSequence();
-        String serverAddress = corruptChunk.getServerAddress();
+        String corruptChunkServerAddress = corruptChunk.getServerAddress();
+
+        synchronized (liveChunkServers) {
+            for (LiveChunkServer lcs : liveChunkServers) {
+                if (lcs.getServerAddress().equals(corruptChunkServerAddress))
+                    continue;
+                Chunk chunk = lcs.getChunk(fileName, sequence);
+                if (chunk != null) {
+                    Utils.debug("sending replicate chunk to " + lcs.getServerAddress());
+                    TcpSender tcpSender = TcpSender.of(lcs.getServerAddress());
+                    ReplicateChunk replicateChunk = new ReplicateChunk(getServerAddress(),
+                        tcpSender.getLocalSocketAddress(),
+                        new cs555.dfs.wireformats.Chunk(fileName, sequence),corruptChunkServerAddress);
+                    tcpSender.send(replicateChunk.getBytes());
+                    break;
+                }
+            }
+        }
     }
 
     @Override

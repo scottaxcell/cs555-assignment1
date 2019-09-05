@@ -4,18 +4,12 @@ import cs555.dfs.node.Chunk;
 import cs555.dfs.transport.TcpSender;
 import cs555.dfs.util.FileChunkifier;
 import cs555.dfs.util.Utils;
-import cs555.dfs.wireformats.CorruptChunk;
-import cs555.dfs.wireformats.RetrieveChunkRequest;
-import cs555.dfs.wireformats.RetrieveChunkResponse;
-import cs555.dfs.wireformats.StoreChunk;
+import cs555.dfs.wireformats.*;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -82,7 +76,7 @@ class ChunkStorage {
             .skip(1).collect(Collectors.toList());
 
         StoreChunk forwardStoreChunk = new StoreChunk(server.getServerAddress(),
-            tcpSender.getSocket().getLocalSocketAddress().toString(),
+            tcpSender.getLocalSocketAddress(),
             new cs555.dfs.wireformats.Chunk(fileName, sequence),
             chunkData, nextNextServers);
         tcpSender.send(forwardStoreChunk.getBytes());
@@ -103,8 +97,9 @@ class ChunkStorage {
         Chunk chunk = getChunk(fileName, sequence);
         if (chunk == null) {
             Utils.error("did not fund chunk " + chunk);
+            return;
         }
-
+        // todo check file exists on disk before read, send corrupt message if non existant
         byte[] bytes = chunk.readChunk();
         List<Integer> corruptSlices = new ArrayList<>();
         List<String> sliceChecksums = FileChunkifier.createSliceChecksums(bytes);
@@ -118,13 +113,13 @@ class ChunkStorage {
 
         if (corruptSlices.isEmpty()) {
             RetrieveChunkResponse response = new RetrieveChunkResponse(server.getServerAddress(),
-                tcpSender.getSocket().getLocalSocketAddress().toString(),
+                tcpSender.getLocalSocketAddress(),
                 new cs555.dfs.wireformats.Chunk(fileName, sequence), bytes);
             tcpSender.send(response.getBytes());
         }
         else {
             CorruptChunk corruptChunk = new CorruptChunk(server.getServerAddress(),
-                tcpSender.getSocket().getLocalSocketAddress().toString(),
+                tcpSender.getLocalSocketAddress(),
                 new cs555.dfs.wireformats.Chunk(fileName, sequence), corruptSlices);
             tcpSender.send(corruptChunk.getBytes());
 
@@ -148,5 +143,31 @@ class ChunkStorage {
 
     synchronized List<Chunk> getNewChunks() {
         return newChunks;
+    }
+
+    public void handleReplicateChunk(ReplicateChunk replicateChunk) {
+        String fileName = replicateChunk.getFileName();
+        int sequence = replicateChunk.getSequence();
+        String corruptChunkServerAddress = replicateChunk.getDestinationAddress();
+
+        Chunk chunk = getChunk(fileName, sequence);
+        if (chunk == null) {
+            Utils.error("did not fund chunk " + chunk);
+            return;
+        }
+        // todo check file exists on disk before read, send corrupt message if non existant
+
+        byte[] bytes = chunk.readChunk();
+        List<Integer> corruptSlices = new ArrayList<>();
+        List<String> sliceChecksums = FileChunkifier.createSliceChecksums(bytes);
+        Utils.compareChecksums(chunk.getChecksums(), sliceChecksums, corruptSlices);
+
+        TcpSender tcpSender = TcpSender.of(corruptChunkServerAddress);
+
+        StoreChunk storeChunk = new StoreChunk(server.getServerAddress(),
+            tcpSender.getLocalSocketAddress(),
+            new cs555.dfs.wireformats.Chunk(fileName, sequence),
+            bytes, Collections.emptyList());
+        tcpSender.send(storeChunk.getBytes());
     }
 }

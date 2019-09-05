@@ -87,6 +87,18 @@ public class LiveChunkServer {
         return false;
     }
 
+    public Chunk getChunk(String fileName, int sequence) {
+        List<Chunk> chunks = filesToChunks.get(fileName);
+        if (chunks == null)
+            return null;
+
+        for (Chunk chunk : chunks)
+            if (chunk.getSequence() == sequence)
+                return chunk;
+
+        return null;
+    }
+
     public String getServerAddress() {
         return serverAddress;
     }

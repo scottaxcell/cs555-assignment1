@@ -12,4 +12,5 @@ public class Protocol {
     public static final int RETRIEVE_CHUNK_REQUEST = 308;
     public static final int RETRIEVE_CHUNK_RESPONSE = 309;
     public static final int CORRUPT_CHUNK = 310;
+    public static final int REPLICATE_CHUNK = 311;
 }
