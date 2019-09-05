@@ -94,6 +94,10 @@ public class Client implements Node {
                     continue;
                 }
                 retrieveFile(path);
+                printProgressBar();
+            }
+            else if (input.startsWith("lf")) {
+                Utils.debug("list files coming soon");
             }
             else if (input.startsWith("h")) {
                 printMenu();
@@ -105,10 +109,23 @@ public class Client implements Node {
         }
     }
 
+    private void printProgressBar() {
+        try {
+            while (fileReader.isRunning()) {
+                Thread.sleep(1000);
+                Utils.out(".");
+            }
+//            Utils.out("\n");
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
     private static void printMenu() {
         Utils.out("****************\n");
-        Utils.out("h -- print menu\n");
+        Utils.out("h  -- print menu\n");
         Utils.out("sf -- store file\n");
+        Utils.out("lf -- list files\n");
         Utils.out("rf -- read file\n");
         Utils.out("q  -- quit\n");
         Utils.out("****************\n");
@@ -119,6 +136,8 @@ public class Client implements Node {
     }
 
     private void retrieveFile(Path path) {
+        Utils.info("Retrieving " + path + " ...", false);
+        fileReader.setIsRunning(true);
         RetrieveFileRequest request = new RetrieveFileRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path));
         controllerTcpConnection.send(request.getBytes());
     }
