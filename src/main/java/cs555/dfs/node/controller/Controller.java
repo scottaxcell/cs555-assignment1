@@ -105,7 +105,7 @@ public class Controller implements Node {
     }
 
     private void handleMinorHeartbeat(Message message) {
-        MinorHeartbeat heartbeat = (MinorHeartbeat) message;
+        Heartbeat heartbeat = (Heartbeat) message;
         Utils.debug("received: " + heartbeat);
         synchronized (liveChunkServers) {
             liveChunkServers.stream()
@@ -116,7 +116,7 @@ public class Controller implements Node {
     }
 
     private void handleMajorHeartbeat(Message message) {
-        MajorHeartbeat heartbeat = (MajorHeartbeat) message;
+        Heartbeat heartbeat = (Heartbeat) message;
         Utils.debug("received: " + heartbeat);
         synchronized (liveChunkServers) {
             liveChunkServers.stream()

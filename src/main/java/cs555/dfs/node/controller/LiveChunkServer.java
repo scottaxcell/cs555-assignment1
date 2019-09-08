@@ -2,9 +2,8 @@ package cs555.dfs.node.controller;
 
 import cs555.dfs.node.Chunk;
 import cs555.dfs.transport.TcpConnection;
-import cs555.dfs.wireformats.MajorHeartbeat;
+import cs555.dfs.wireformats.Heartbeat;
 import cs555.dfs.wireformats.Message;
-import cs555.dfs.wireformats.MinorHeartbeat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +23,7 @@ public class LiveChunkServer {
         this.serverAddress = serverAddress;
     }
 
-    public void minorHeartbeatUpdate(MinorHeartbeat heartbeat) {
+    public void minorHeartbeatUpdate(Heartbeat heartbeat) {
         usableSpace = heartbeat.getUsableSpace();
         totalNumberOfChunks = heartbeat.getNumberOfChunks();
         List<Chunk> chunks = heartbeat.getChunks();
@@ -35,7 +34,7 @@ public class LiveChunkServer {
         }
     }
 
-    public void majorHeartbeatUpdate(MajorHeartbeat heartbeat) {
+    public void majorHeartbeatUpdate(Heartbeat heartbeat) {
         usableSpace = heartbeat.getUsableSpace();
         totalNumberOfChunks = heartbeat.getNumberOfChunks();
         filesToChunks.clear();

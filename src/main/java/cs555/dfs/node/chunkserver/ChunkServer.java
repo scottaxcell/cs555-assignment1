@@ -131,7 +131,8 @@ public class ChunkServer implements Node {
         @Override
         public void run() {
             if (counter.incrementAndGet() == MAJOR_HEARTBEAT_INTERVAL) {
-                MajorHeartbeat heartbeat = new MajorHeartbeat(getServerAddress(),
+                Heartbeat heartbeat = new Heartbeat(Protocol.MAJOR_HEART_BEAT,
+                    getServerAddress(),
                     controllerTcpConnection.getLocalSocketAddress(),
                     chunkStorage.getUsableSpace(),
                     chunkStorage.getTotalNumberOfChunks(),
@@ -140,7 +141,8 @@ public class ChunkServer implements Node {
                 counter.set(0);
             }
             else {
-                MinorHeartbeat heartbeat = new MinorHeartbeat(getServerAddress(),
+                Heartbeat heartbeat = new Heartbeat(Protocol.MINOR_HEART_BEAT,
+                    getServerAddress(),
                     controllerTcpConnection.getLocalSocketAddress(),
                     chunkStorage.getUsableSpace(),
                     chunkStorage.getTotalNumberOfChunks(),

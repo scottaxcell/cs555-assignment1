@@ -21,9 +21,9 @@ public class MessageFactory {
             case Protocol.STORE_CHUNK:
                 return new StoreChunk(data);
             case Protocol.MINOR_HEART_BEAT:
-                return new MinorHeartbeat(data);
+                return new Heartbeat(data);
             case Protocol.MAJOR_HEART_BEAT:
-                return new MajorHeartbeat(data);
+                return new Heartbeat(data);
             case Protocol.RETRIEVE_FILE_REQUEST:
                 return new RetrieveFileRequest(data);
             case Protocol.RETRIEVE_FILE_RESPONSE:
