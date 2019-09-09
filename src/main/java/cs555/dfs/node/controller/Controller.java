@@ -8,6 +8,7 @@ import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
  * - metadata associated with server
  */
 public class Controller implements Node {
+    private static final int ALIVE_HEARTBEAT_INTERVAL = 3 * 1000;
     private static final int REPLICATION_LEVEL = 3;
     private final TcpServer tcpServer;
     private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>(); // key = remote socket address
@@ -46,6 +48,10 @@ public class Controller implements Node {
         tcpServer = new TcpServer(port, this);
         new Thread(tcpServer).start();
         Utils.sleep(500);
+
+        AliveHeartBeatTimerTask aliveHeartBeatTimerTask = new AliveHeartBeatTimerTask();
+        Timer timer = new Timer(true);
+        timer.schedule(aliveHeartBeatTimerTask, ALIVE_HEARTBEAT_INTERVAL, ALIVE_HEARTBEAT_INTERVAL);
     }
 
     public static void main(String[] args) {
@@ -69,10 +75,10 @@ public class Controller implements Node {
             case Protocol.REGISTER_REQUEST:
                 handleRegisterRequest(message);
                 break;
-            case Protocol.MINOR_HEART_BEAT:
+            case Protocol.MINOR_HEARTBEAT:
                 handleMinorHeartbeat(message);
                 break;
-            case Protocol.MAJOR_HEART_BEAT:
+            case Protocol.MAJOR_HEARTBEAT:
                 handleMajorHeartbeat(message);
                 break;
             case Protocol.STORE_CHUNK_REQUEST:
@@ -206,7 +212,7 @@ public class Controller implements Node {
                     TcpSender tcpSender = TcpSender.of(lcs.getServerAddress());
                     ReplicateChunk replicateChunk = new ReplicateChunk(getServerAddress(),
                         tcpSender.getLocalSocketAddress(),
-                        new cs555.dfs.wireformats.Chunk(fileName, sequence),corruptChunkServerAddress);
+                        new cs555.dfs.wireformats.Chunk(fileName, sequence), corruptChunkServerAddress);
                     tcpSender.send(replicateChunk.getBytes());
                     break;
                 }
@@ -228,5 +234,25 @@ public class Controller implements Node {
     @Override
     public String getServerAddress() {
         return Utils.getServerAddress(tcpServer);
+    }
+
+    private class AliveHeartBeatTimerTask extends TimerTask {
+
+        @Override
+        public void run() {
+            synchronized (liveChunkServers) {
+                for (LiveChunkServer lcs : liveChunkServers) {
+                    TcpConnection tcpConnection = lcs.getTcpConnection();
+                    AliveHeartbeat aliveHeartbeat = new AliveHeartbeat(getServerAddress(), tcpConnection.getLocalSocketAddress());
+                    try {
+                        tcpConnection.sendNoCatch(aliveHeartbeat.getBytes());
+                    }
+                    catch (IOException e) {
+                        // todo handle chunk server dead
+                        Utils.debug("chunk server died");
+                    }
+                }
+            }
+        }
     }
 }

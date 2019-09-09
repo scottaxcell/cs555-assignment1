@@ -8,15 +8,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Heartbeat implements Message {
-    private int protocol;
     private MessageHeader messageHeader;
     private long usableSpace;
     private int totalNumberOfChunks;
     private List<Chunk> chunks = new ArrayList<>();
 
     public Heartbeat(int protocol, String serverAddress, String sourceAddress, long usableSpace, int totalNumberOfChunks, List<Chunk> chunks) {
-        this.protocol = protocol;
-        this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
+        this.messageHeader = new MessageHeader(protocol, serverAddress, sourceAddress);
         this.usableSpace = usableSpace;
         this.totalNumberOfChunks = totalNumberOfChunks;
         this.chunks = chunks;
@@ -24,7 +22,7 @@ public class Heartbeat implements Message {
 
     @Override
     public int getProtocol() {
-        return protocol;
+        return messageHeader.getProtocol();
     }
 
     @Override

@@ -105,4 +105,8 @@ public class LiveChunkServer {
     public List<Chunk> getChunks(String fileName) {
         return filesToChunks.get(fileName);
     }
+
+    public TcpConnection getTcpConnection() {
+        return tcpConnection;
+    }
 }
