@@ -7,14 +7,14 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MajorHeartbeat implements Message {
+public class Heartbeat implements Message {
     private MessageHeader messageHeader;
     private long usableSpace;
     private int totalNumberOfChunks;
     private List<Chunk> chunks = new ArrayList<>();
 
-    public MajorHeartbeat(String serverAddress, String sourceAddress, long usableSpace, int totalNumberOfChunks, List<Chunk> chunks) {
-        this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
+    public Heartbeat(int protocol, String serverAddress, String sourceAddress, long usableSpace, int totalNumberOfChunks, List<Chunk> chunks) {
+        this.messageHeader = new MessageHeader(protocol, serverAddress, sourceAddress);
         this.usableSpace = usableSpace;
         this.totalNumberOfChunks = totalNumberOfChunks;
         this.chunks = chunks;
@@ -22,7 +22,7 @@ public class MajorHeartbeat implements Message {
 
     @Override
     public int getProtocol() {
-        return Protocol.MAJOR_HEART_BEAT;
+        return messageHeader.getProtocol();
     }
 
     @Override
@@ -35,16 +35,11 @@ public class MajorHeartbeat implements Message {
             WireformatUtils.serializeLong(dataOutputStream, usableSpace);
             WireformatUtils.serializeInt(dataOutputStream, totalNumberOfChunks);
             WireformatUtils.serializeInt(dataOutputStream, chunks.size());
-            // todo -- cleanup chunk serialization
             for (Chunk chunk : chunks) {
-                dataOutputStream.writeInt(chunk.getFileName().length());
-                dataOutputStream.write(chunk.getFileName().getBytes());
-
-                dataOutputStream.writeInt(chunk.getVersion());
-
-                dataOutputStream.writeInt(chunk.getSequence());
-
-                dataOutputStream.writeLong(chunk.getTimeStamp().getEpochSecond());
+                WireformatUtils.serializeString(dataOutputStream, chunk.getFileName());
+                WireformatUtils.serializeInt(dataOutputStream, chunk.getVersion());
+                WireformatUtils.serializeInt(dataOutputStream, chunk.getSequence());
+                WireformatUtils.serializeLong(dataOutputStream, chunk.getTimeStamp().getEpochSecond());
             }
 
             dataOutputStream.flush();
@@ -62,7 +57,7 @@ public class MajorHeartbeat implements Message {
         }
     }
 
-    public MajorHeartbeat(byte[] bytes) {
+    public Heartbeat(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
@@ -72,13 +67,12 @@ public class MajorHeartbeat implements Message {
             usableSpace = WireformatUtils.deserializeLong(dataInputStream);
             totalNumberOfChunks = WireformatUtils.deserializeInt(dataInputStream);
 
-            int numNewChunks = WireformatUtils.deserializeInt(dataInputStream);
-            // todo -- cleanup chunk deserialization
-            for (int i = 0; i < numNewChunks; i++) {
+            int numChunks = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numChunks; i++) {
                 String fileName = WireformatUtils.deserializeString(dataInputStream);
-                int version = dataInputStream.readInt();
-                int sequence = dataInputStream.readInt();
-                long timeStampEpochSecond = dataInputStream.readLong();
+                int version = WireformatUtils.deserializeInt(dataInputStream);
+                int sequence = WireformatUtils.deserializeInt(dataInputStream);
+                long timeStampEpochSecond = WireformatUtils.deserializeLong(dataInputStream);
                 chunks.add(new Chunk(fileName, version, sequence, Instant.ofEpochSecond(timeStampEpochSecond)));
             }
 
@@ -92,7 +86,7 @@ public class MajorHeartbeat implements Message {
 
     @Override
     public String toString() {
-        return "MajorHeartbeat{" +
+        return "Heartbeat{" +
             "messageHeader=" + messageHeader +
             ", usableSpace=" + usableSpace +
             ", totalNumberOfChunks=" + totalNumberOfChunks +

@@ -20,10 +20,10 @@ public class MessageFactory {
                 return new StoreChunkResponse(data);
             case Protocol.STORE_CHUNK:
                 return new StoreChunk(data);
-            case Protocol.MINOR_HEART_BEAT:
-                return new MinorHeartbeat(data);
-            case Protocol.MAJOR_HEART_BEAT:
-                return new MajorHeartbeat(data);
+            case Protocol.MINOR_HEARTBEAT:
+                return new Heartbeat(data);
+            case Protocol.MAJOR_HEARTBEAT:
+                return new Heartbeat(data);
             case Protocol.RETRIEVE_FILE_REQUEST:
                 return new RetrieveFileRequest(data);
             case Protocol.RETRIEVE_FILE_RESPONSE:
@@ -36,6 +36,8 @@ public class MessageFactory {
                 return new CorruptChunk(data);
             case Protocol.REPLICATE_CHUNK:
                 return new ReplicateChunk(data);
+            case Protocol.ALIVE_HEARTBEAT:
+                return new AliveHeartbeat(data);
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }

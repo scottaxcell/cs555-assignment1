@@ -79,9 +79,17 @@ public class ChunkServer implements Node {
             case Protocol.REPLICATE_CHUNK:
                 handleReplicateChunk(message);
                 break;
+            case Protocol.ALIVE_HEARTBEAT:
+                handleAliveHeartbeat(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
+    }
+
+    private void handleAliveHeartbeat(Message message) {
+        AliveHeartbeat heartbeat = (AliveHeartbeat) message;
+        Utils.debug("received: " + heartbeat);
     }
 
     private void handleReplicateChunk(Message message) {
@@ -131,7 +139,8 @@ public class ChunkServer implements Node {
         @Override
         public void run() {
             if (counter.incrementAndGet() == MAJOR_HEARTBEAT_INTERVAL) {
-                MajorHeartbeat heartbeat = new MajorHeartbeat(getServerAddress(),
+                Heartbeat heartbeat = new Heartbeat(Protocol.MAJOR_HEARTBEAT,
+                    getServerAddress(),
                     controllerTcpConnection.getLocalSocketAddress(),
                     chunkStorage.getUsableSpace(),
                     chunkStorage.getTotalNumberOfChunks(),
@@ -140,7 +149,8 @@ public class ChunkServer implements Node {
                 counter.set(0);
             }
             else {
-                MinorHeartbeat heartbeat = new MinorHeartbeat(getServerAddress(),
+                Heartbeat heartbeat = new Heartbeat(Protocol.MINOR_HEARTBEAT,
+                    getServerAddress(),
                     controllerTcpConnection.getLocalSocketAddress(),
                     chunkStorage.getUsableSpace(),
                     chunkStorage.getTotalNumberOfChunks(),
