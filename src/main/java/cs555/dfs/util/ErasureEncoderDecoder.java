@@ -144,10 +144,18 @@ public class ErasureEncoderDecoder {
         int chunkSize = 64 * 1024;
         byte[] randomBytes = new byte[chunkSize * 5 + 2];
         new Random().nextBytes(randomBytes);
-
+        Utils.debug("data replicated 3x size: " + randomBytes.length * 3);
         byte[][] encoded = ErasureEncoderDecoder.encode(randomBytes);
+        int encodedSize = 0;
+        for (byte[] b : encoded)
+            encodedSize += b.length;
+        Utils.debug("encodedSize: " + encodedSize);
         String preEncodingHash = Utils.createSha1FromBytes(randomBytes);
         Utils.debug("pre:  " + preEncodingHash);
+
+        encoded[1] = null;
+        encoded[2] = null;
+        encoded[TOTAL_SHARDS - 2] = null;
 
         byte[] decoded = ErasureEncoderDecoder.decode(encoded);
         String postDecodeHash = Utils.createSha1FromBytes(decoded);
