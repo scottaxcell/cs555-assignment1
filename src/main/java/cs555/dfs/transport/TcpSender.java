@@ -34,10 +34,7 @@ public class TcpSender {
 
     public synchronized void send(byte[] data) {
         try {
-            int dataLength = data.length;
-            dataOutputStream.writeInt(dataLength);
-            dataOutputStream.write(data, 0, dataLength);
-            dataOutputStream.flush();
+            sendNoCatch(data);
         }
         catch (IOException e) {
             e.printStackTrace();
