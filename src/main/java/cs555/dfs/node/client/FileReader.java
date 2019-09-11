@@ -24,6 +24,7 @@ class FileReader {
     private final AtomicInteger numReceivedChunks = new AtomicInteger();
     private final AtomicInteger numExpectedChunks = new AtomicInteger();
     private final AtomicBoolean isRunning = new AtomicBoolean();
+    private String fileName;
 
     FileReader(Client client) {
         this.client = client;
@@ -61,13 +62,14 @@ class FileReader {
                 .map(ChunkData::getData)
                 .collect(Collectors.toList());
             byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
-            Path path = Paths.get("./bogus.txt_retrieved");
+            Path path = Paths.get(String.format("./%s", fileName));
             try {
                 setIsRunning(false);
                 Files.createDirectories(path.getParent());
                 Files.write(path, bytes);
                 Utils.sleep(1500);
-                Utils.info("File written to " + path);
+                Utils.info("File written to " + path.toAbsolutePath());
+                setFileName("");
             }
             catch (IOException e) {
                 e.printStackTrace();
@@ -145,5 +147,9 @@ class FileReader {
 
     public boolean isRunning() {
         return isRunning.get();
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
 }

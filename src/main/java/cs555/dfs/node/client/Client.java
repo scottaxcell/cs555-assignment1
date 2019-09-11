@@ -52,25 +52,21 @@ public class Client implements Node {
 
             input = scanner.next();
             if (input.startsWith("sf")) {
-                // todo -- turn on ask for file
-                // todo -- wait for file to write before giving back command line prompt
-//                Utils.out("file: \n");
-//                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
+                Utils.out("file: \n");
+                String fileName = scanner.next();
+//                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.error("file does not exist: " + path);
                     continue;
                 }
                 storeFile(path);
+                printProgressBar();
             }
             if (input.startsWith("rf")) {
-                // todo -- turn on ask for file
-                // todo -- wait for file to write before giving back command line prompt
-                // todo -- ask for output path
-//                Utils.out("file: \n");
-//                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
+                Utils.out("file: \n");
+                String fileName = scanner.next();
+//                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.error("file does not exist: " + path);
@@ -122,12 +118,14 @@ public class Client implements Node {
     }
 
     private void storeFile(Path path) {
+        Utils.info("Storing " + path + " ...", false);
         fileStorer.storeFile(path);
     }
 
     private void retrieveFile(Path path) {
         Utils.info("Retrieving " + path + " ...", false);
         fileReader.setIsRunning(true);
+        fileReader.setFileName(path.getFileName().toString());
         RetrieveFileRequest request = new RetrieveFileRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path));
         controllerTcpConnection.send(request.getBytes());
     }
