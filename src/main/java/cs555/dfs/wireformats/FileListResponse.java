@@ -77,4 +77,8 @@ public class FileListResponse implements Message {
     public String getSourceAddress() {
         return messageHeader.getSourceAddress();
     }
+
+    public List<String> getFileNames() {
+        return fileNames;
+    }
 }

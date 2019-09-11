@@ -12,11 +12,13 @@ import cs555.dfs.wireformats.StoreChunkResponse;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 class FileStorer {
     private final Client client;
     private final List<ChunkData> chunkDataList = new ArrayList<>();
+    private AtomicBoolean isRunning = new AtomicBoolean();
 
     FileStorer(Client client) {
         this.client = client;
@@ -68,15 +70,26 @@ class FileStorer {
                     new Chunk(chunkData.fileName, chunkData.sequence));
                 client.getControllerTcpConnection().send(request.getBytes());
             }
+            else
+                setIsRunning(false);
         }
     }
 
     public void storeFile(Path path) {
+        setIsRunning(true);
         synchronized (chunkDataList) {
             chunkDataList.addAll(FileChunkifier.chunkifyFileToDataChunks(path));
             if (!chunkDataList.isEmpty()) {
                 sendNextStoreChunkRequest();
             }
         }
+    }
+
+    public void setIsRunning(boolean isRunning) {
+        this.isRunning.set(isRunning);
+    }
+
+    public boolean isRunning() {
+        return isRunning.get();
     }
 }

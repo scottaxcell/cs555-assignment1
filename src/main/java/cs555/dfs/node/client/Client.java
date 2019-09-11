@@ -54,12 +54,12 @@ public class Client implements Node {
             if (input.startsWith("sf")) {
                 // todo -- turn on ask for file
                 // todo -- wait for file to write before giving back command line prompt
-//                Utils.out("fileName: \n");
+//                Utils.out("file: \n");
 //                String fileName = scanner.next();
                 String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
-                    Utils.out("file does not exist: " + path + "\n");
+                    Utils.error("file does not exist: " + path);
                     continue;
                 }
                 storeFile(path);
@@ -68,12 +68,12 @@ public class Client implements Node {
                 // todo -- turn on ask for file
                 // todo -- wait for file to write before giving back command line prompt
                 // todo -- ask for output path
-//                Utils.out("fileName: \n");
+//                Utils.out("file: \n");
 //                String fileName = scanner.next();
                 String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
-                    Utils.out("file does not exist: " + path + "\n");
+                    Utils.error("file does not exist: " + path);
                     continue;
                 }
                 retrieveFile(path);
@@ -86,8 +86,8 @@ public class Client implements Node {
             else if (input.startsWith("h")) {
                 printMenu();
             }
-            else if (input.startsWith("q")) {
-                Utils.out("goodbye\n");
+            else if (input.startsWith("e")) {
+                Utils.info("Auf Wiedersehen");
                 System.exit(0);
             }
         }
@@ -101,11 +101,10 @@ public class Client implements Node {
 
     private void printProgressBar() {
         try {
-            while (fileReader.isRunning() || fileLister.isRunning()) {
-                Thread.sleep(1000);
+            while (fileReader.isRunning() || fileLister.isRunning() || fileStorer.isRunning()) {
+                Thread.sleep(500);
                 Utils.out(".");
             }
-//            Utils.out("\n");
         }
         catch (InterruptedException e) {
             e.printStackTrace();
@@ -118,7 +117,7 @@ public class Client implements Node {
         Utils.out("sf -- store file\n");
         Utils.out("lf -- list files\n");
         Utils.out("rf -- read file\n");
-        Utils.out("q  -- quit\n");
+        Utils.out("e  -- exit\n");
         Utils.out("****************\n");
     }
 
