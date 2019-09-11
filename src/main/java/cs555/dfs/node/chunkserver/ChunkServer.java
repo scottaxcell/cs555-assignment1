@@ -24,10 +24,14 @@ public class ChunkServer implements Node {
     private ChunkServer(int port, String controllerIp, int controllerPort, String serverName) {
         chunkStorage = new ChunkStorage(this, serverName);
         tcpServer = new TcpServer(port, this);
+
+        registerWithController(controllerIp, controllerPort);
+    }
+
+    void run() {
         new Thread(tcpServer).start();
         Utils.sleep(500);
 
-        registerWithController(controllerIp, controllerPort);
         initMinorHeartbeatTimer();
     }
 
@@ -58,7 +62,7 @@ public class ChunkServer implements Node {
         int controllerPort = Integer.parseInt(args[2]);
         String serverName = args.length == 4 ? args[3] : "";
 
-        new ChunkServer(port, controllerIp, controllerPort, serverName);
+        new ChunkServer(port, controllerIp, controllerPort, serverName).run();
     }
 
     private static void printHelpAndExit() {

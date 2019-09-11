@@ -11,40 +11,19 @@ import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.Scanner;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
-/**
- * USE CASES
- * =========
- * <p>
- * store file on dfs:
- * - chunkify file
- * - ask controller for 3 servers
- * - send chunk to first server
- * - wait for response before asking controller for next set of servers for the next chunk
- * - repeat for each chunk
- * <p>
- * read file from dfs:
- * - ask controller for servers
- * - ask each server for all available chunks
- * - sort chunks according to sequence number
- * - write chunks to file on disk -- user will specify location
- */
 public class Client implements Node {
     private final FileReader fileReader;
     private final FileStorer fileStorer;
     private final TcpServer tcpServer;
-    private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>(); // key = remote socket address
     private TcpConnection controllerTcpConnection;
 
     public Client(String controllerIp, int controllerPort) {
         fileReader = new FileReader(this);
         fileStorer = new FileStorer(this);
         tcpServer = new TcpServer(0, this);
-        new Thread(tcpServer).start();
 
         try {
             Socket socket = new Socket(controllerIp, controllerPort);
@@ -53,7 +32,10 @@ public class Client implements Node {
         catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
+    void run() {
+        new Thread(tcpServer).start();
         handleCmdLineInput();
     }
 
@@ -121,6 +103,7 @@ public class Client implements Node {
             e.printStackTrace();
         }
     }
+
     private static void printMenu() {
         Utils.out("****************\n");
         Utils.out("h  -- print menu\n");
@@ -149,7 +132,7 @@ public class Client implements Node {
         String controllerIp = args[0];
         int controllerPort = Integer.parseInt(args[1]);
 
-        new Client(controllerIp, controllerPort);
+        new Client(controllerIp, controllerPort).run();
     }
 
     private static void printHelpAndExit() {
@@ -214,8 +197,6 @@ public class Client implements Node {
 
     @Override
     public void registerNewTcpConnection(TcpConnection tcpConnection) {
-        connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
-        Utils.debug("registering tcp connection: " + tcpConnection.getRemoteSocketAddress());
     }
 
     @Override

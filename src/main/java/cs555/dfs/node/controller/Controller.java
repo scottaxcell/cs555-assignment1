@@ -46,6 +46,9 @@ public class Controller implements Node {
 
     public Controller(int port) {
         tcpServer = new TcpServer(port, this);
+    }
+
+    void run() {
         new Thread(tcpServer).start();
         Utils.sleep(500);
 
@@ -60,7 +63,7 @@ public class Controller implements Node {
 
         int port = Integer.parseInt(args[0]);
 
-        new Controller(port);
+        new Controller(port).run();
     }
 
     private static void printHelpAndExit() {
@@ -136,33 +139,43 @@ public class Controller implements Node {
         StoreChunkRequest request = (StoreChunkRequest) message;
         Utils.debug("received: " + request);
         String fileName = request.getFileName();
-        int chunkSequence = request.getSequence();
+        int sequence = request.getSequence();
 
-        List<LiveChunkServer> validChunkServers;
+        List<LiveChunkServer> serversWithoutChunk = findServersWithoutChunk(fileName, sequence);
+
+        List<String> validServerAddresses = serversWithoutChunk.stream()
+            .map(LiveChunkServer::getServerAddress)
+            .collect(Collectors.toList());
+
+        if (validServerAddresses.size() != REPLICATION_LEVEL) {
+            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers, found " + validServerAddresses.size());
+            return;
+        }
+
+        String sourceAddress = request.getSourceAddress();
+        TcpConnection tcpConnection = connections.get(sourceAddress);
+        if (tcpConnection == null) {
+            Utils.error("failed to find connection for: " + sourceAddress);
+            return;
+        }
+
+        StoreChunkResponse response = new StoreChunkResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(),
+            new cs555.dfs.wireformats.Chunk(fileName, sequence), validServerAddresses);
+        tcpConnection.send(response.getBytes());
+    }
+
+    private List<LiveChunkServer> findServersWithoutChunk(String fileName, int sequence) {
+        List<LiveChunkServer> servers;
+
         synchronized (liveChunkServers) {
-            validChunkServers = liveChunkServers.stream()
-                .filter(lcs -> !lcs.containsChunk(fileName, chunkSequence))
+            servers = liveChunkServers.stream()
+                .filter(lcs -> !lcs.containsChunk(fileName, sequence))
                 .sorted(Comparator.comparingLong(LiveChunkServer::getUsableSpace).reversed())
                 .limit(REPLICATION_LEVEL)
                 .collect(Collectors.toList());
         }
 
-        List<String> validServerAddresses = validChunkServers.stream()
-            .map(LiveChunkServer::getServerAddress)
-            .collect(Collectors.toList());
-
-        // todo turn on
-//        if (validServerAddresses.size() != REPLICATION_LEVEL) {
-//            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers, found " + validServerAddresses.size());
-//            return;
-//        }
-
-        String sourceAddress = request.getSourceAddress();
-        TcpConnection tcpConnection = connections.get(sourceAddress);
-
-        StoreChunkResponse response = new StoreChunkResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(),
-            new cs555.dfs.wireformats.Chunk(fileName, chunkSequence), validServerAddresses);
-        tcpConnection.send(response.getBytes());
+        return servers;
     }
 
     private void handleRetrieveFileRequest(Message message) {
@@ -189,6 +202,10 @@ public class Controller implements Node {
 
         String sourceAddress = request.getSourceAddress();
         TcpConnection tcpConnection = connections.get(sourceAddress);
+        if (tcpConnection == null) {
+            Utils.error("failed to find connection for: " + sourceAddress);
+            return;
+        }
 
         RetrieveFileResponse response = new RetrieveFileResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, chunkLocations);
         tcpConnection.send(response.getBytes());
@@ -236,10 +253,72 @@ public class Controller implements Node {
         return Utils.getServerAddress(tcpServer);
     }
 
-    private class AliveHeartBeatTimerTask extends TimerTask {
+    private void processDeadChunkServer(LiveChunkServer deadServer) {
+        List<Chunk> chunks = deadServer.getChunks();
+        for (Chunk chunk : chunks) {
+            String fileName = chunk.getFileName();
+            int sequence = chunk.getSequence();
+            int numberOfReplications = getNumberOfReplications(fileName, sequence);
+            int requiredReplcations = REPLICATION_LEVEL - numberOfReplications;
+            if (requiredReplcations == 0)
+                continue;
+            List<LiveChunkServer> serversWithoutChunk = findServersWithoutChunk(fileName, sequence);
+            if (serversWithoutChunk.size() < requiredReplcations) {
+                Utils.error("failed to find required number of servers without chunk for replication");
+                return;
+            }
+            List<LiveChunkServer> replicationServers = serversWithoutChunk.subList(0, requiredReplcations);
 
+            List<LiveChunkServer> serversWithChunk = findServersWithChunk(fileName, sequence);
+            if (serversWithChunk.isEmpty()) {
+                Utils.error("failed to find server with chunk for replication");
+                return;
+            }
+
+            for (LiveChunkServer replicationServer : replicationServers) {
+                Utils.debug("sending replicate chunk to " + serversWithChunk.get(0).getServerAddress() + " for " + replicationServer.getServerAddress());
+
+                TcpSender tcpSender = TcpSender.of(serversWithChunk.get(0).getServerAddress());
+
+                ReplicateChunk replicateChunk = new ReplicateChunk(getServerAddress(),
+                    tcpSender.getLocalSocketAddress(),
+                    new cs555.dfs.wireformats.Chunk(fileName, sequence), replicationServer.getServerAddress());
+
+                tcpSender.send(replicateChunk.getBytes());
+            }
+        }
+    }
+
+    private List<LiveChunkServer> findServersWithChunk(String fileName, int sequence) {
+        List<LiveChunkServer> servers;
+
+        synchronized (liveChunkServers) {
+            servers = liveChunkServers.stream()
+                .filter(lcs -> lcs.containsChunk(fileName, sequence))
+                .sorted(Comparator.comparingLong(LiveChunkServer::getUsableSpace).reversed())
+                .limit(REPLICATION_LEVEL)
+                .collect(Collectors.toList());
+        }
+
+        return servers;
+    }
+
+    private int getNumberOfReplications(String fileName, int sequence) {
+        int numReplications = 0;
+        synchronized (liveChunkServers) {
+            for (LiveChunkServer lcs : liveChunkServers) {
+                if (lcs.containsChunk(fileName, sequence))
+                    numReplications++;
+            }
+        }
+        return numReplications;
+    }
+
+    private class AliveHeartBeatTimerTask extends TimerTask {
         @Override
         public void run() {
+            List<LiveChunkServer> deadServers = new ArrayList<>();
+
             synchronized (liveChunkServers) {
                 for (LiveChunkServer lcs : liveChunkServers) {
                     TcpConnection tcpConnection = lcs.getTcpConnection();
@@ -248,10 +327,15 @@ public class Controller implements Node {
                         tcpConnection.sendNoCatch(aliveHeartbeat.getBytes());
                     }
                     catch (IOException e) {
-                        // todo handle chunk server dead
-                        Utils.debug("chunk server died");
+                        Utils.debug("chunk server died: " + lcs.getServerAddress());
+                        deadServers.add(lcs);
                     }
                 }
+            }
+
+            for (LiveChunkServer deadServer : deadServers) {
+                liveChunkServers.remove(deadServer);
+                processDeadChunkServer(deadServer);
             }
         }
     }

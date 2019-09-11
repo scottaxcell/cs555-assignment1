@@ -5,10 +5,7 @@ import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.wireformats.Heartbeat;
 import cs555.dfs.wireformats.Message;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LiveChunkServer {
@@ -96,6 +93,16 @@ public class LiveChunkServer {
                 return chunk;
 
         return null;
+    }
+
+    public List<Chunk> getChunks() {
+        List<Chunk> chunks = new ArrayList<>();
+
+        filesToChunks.values().stream()
+            .flatMap(Collection::stream)
+            .forEach(chunks::add);
+
+        return chunks;
     }
 
     public String getServerAddress() {
