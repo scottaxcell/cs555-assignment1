@@ -116,4 +116,8 @@ public class LiveChunkServer {
     public TcpConnection getTcpConnection() {
         return tcpConnection;
     }
+
+    public Set<String> getFileNames() {
+        return filesToChunks.keySet();
+    }
 }

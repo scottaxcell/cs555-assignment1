@@ -26,7 +26,6 @@ class ChunkStorage {
         storageDir = Paths.get(TMP_DIR, USER_NAME, "chunkserver" + serverName);
     }
 
-
     synchronized int getTotalNumberOfChunks() {
         int numChunks = 0;
         for (List<Chunk> chunks : filesToChunks.values()) {
@@ -96,7 +95,7 @@ class ChunkStorage {
         int sequence = request.getSequence();
         Chunk chunk = getChunk(fileName, sequence);
         if (chunk == null) {
-            Utils.error("did not fund chunk " + chunk);
+            Utils.error("did not find chunk " + chunk);
             return;
         }
         // todo check file exists on disk before read, send corrupt message if non existant

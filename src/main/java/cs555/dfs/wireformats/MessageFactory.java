@@ -38,6 +38,10 @@ public class MessageFactory {
                 return new ReplicateChunk(data);
             case Protocol.ALIVE_HEARTBEAT:
                 return new AliveHeartbeat(data);
+            case Protocol.FILE_LIST_REQUEST:
+                return new FileListRequest(data);
+            case Protocol.FILE_LIST_RESPONSE:
+                return new FileListResponse(data);
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }

@@ -14,7 +14,6 @@ public class ErasureEncoderDecoder {
     public static final int BYTES_IN_INT = 4;
 
     public static byte[][] encode(byte[] data) {
-
         // total size of the stored data = length of the payload paylod size
         int storedSize = data.length + BYTES_IN_INT;
 

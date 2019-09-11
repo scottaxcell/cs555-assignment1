@@ -2,7 +2,6 @@ package cs555.dfs.node.client;
 
 import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
-import cs555.dfs.transport.TcpSender;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
@@ -17,12 +16,14 @@ import java.util.regex.Pattern;
 public class Client implements Node {
     private final FileReader fileReader;
     private final FileStorer fileStorer;
+    private final FileLister fileLister;
     private final TcpServer tcpServer;
     private TcpConnection controllerTcpConnection;
 
     public Client(String controllerIp, int controllerPort) {
         fileReader = new FileReader(this);
         fileStorer = new FileStorer(this);
+        fileLister = new FileLister(this);
         tcpServer = new TcpServer(0, this);
 
         try {
@@ -79,7 +80,8 @@ public class Client implements Node {
                 printProgressBar();
             }
             else if (input.startsWith("lf")) {
-                Utils.debug("list files coming soon");
+                listFiles();
+                printProgressBar();
             }
             else if (input.startsWith("h")) {
                 printMenu();
@@ -91,9 +93,15 @@ public class Client implements Node {
         }
     }
 
+    private void listFiles() {
+        fileLister.setIsRunning(true);
+        FileListRequest request = new FileListRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress());
+        controllerTcpConnection.send(request.getBytes());
+    }
+
     private void printProgressBar() {
         try {
-            while (fileReader.isRunning()) {
+            while (fileReader.isRunning() || fileLister.isRunning()) {
                 Thread.sleep(1000);
                 Utils.out(".");
             }
@@ -160,9 +168,18 @@ public class Client implements Node {
             case Protocol.CORRUPT_CHUNK:
                 handleChunkCorruption(message);
                 break;
+            case Protocol.FILE_LIST_RESPONSE:
+                handleFileListResponse(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
+    }
+
+    private void handleFileListResponse(Message message) {
+        FileListResponse response = (FileListResponse) message;
+        Utils.debug("received: " + response);
+        fileLister.handleFileListResponse(response);
     }
 
     private void handleStoreChunkResponse(Message message) {
@@ -202,23 +219,5 @@ public class Client implements Node {
     @Override
     public String getServerAddress() {
         return Utils.getServerAddress(tcpServer);
-    }
-
-    private TcpSender getTcpSenderFromServerAddress(String serverAddress) {
-//        TcpConnection tcpConnection = connections.get(serverAddress);
-//        if (tcpConnection != null)
-//            return tcpConnection.getTcpSender();
-//        else {
-//        String[] splitServerAddress = Utils.splitServerAddress(serverAddress);
-//        try {
-//            Socket socket = new Socket(splitServerAddress[0], Integer.valueOf(splitServerAddress[1]));
-//            return new TcpSender(socket);
-//        }
-//        catch (IOException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//        }
-        return TcpSender.of(serverAddress);
     }
 }

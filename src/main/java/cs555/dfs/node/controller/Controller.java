@@ -13,30 +13,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-/**
- * USE CASES
- * =========
- * <p>
- * provide 3 chunk servers for a given chunk to write:
- * - read client request for 3 servers
- * - find servers that do not hold this chunk already
- * - choose 3 servers with highest usable disk space
- * - send list of servers to client
- * <p>
- * track live chunk servers
- * - register server on message from server
- * - update chunk data when a heartbeat comes in
- * - de-register server when it goes down
- * <p>
- * provide list of servers with all chunks for a file:
- * - read client request for a file
- * - send client list of servers with files
- * <p>
- * storage:
- * - live chunk server
- * - all chunks associated with server
- * - metadata associated with server
- */
 public class Controller implements Node {
     private static final int ALIVE_HEARTBEAT_INTERVAL = 3 * 1000;
     private static final int REPLICATION_LEVEL = 3;
@@ -48,15 +24,6 @@ public class Controller implements Node {
         tcpServer = new TcpServer(port, this);
     }
 
-    void run() {
-        new Thread(tcpServer).start();
-        Utils.sleep(500);
-
-        AliveHeartBeatTimerTask aliveHeartBeatTimerTask = new AliveHeartBeatTimerTask();
-        Timer timer = new Timer(true);
-        timer.schedule(aliveHeartBeatTimerTask, ALIVE_HEARTBEAT_INTERVAL, ALIVE_HEARTBEAT_INTERVAL);
-    }
-
     public static void main(String[] args) {
         if (args.length != 1)
             printHelpAndExit();
@@ -64,6 +31,15 @@ public class Controller implements Node {
         int port = Integer.parseInt(args[0]);
 
         new Controller(port).run();
+    }
+
+    void run() {
+        new Thread(tcpServer).start();
+        Utils.sleep(500);
+
+        AliveHeartBeatTimerTask aliveHeartBeatTimerTask = new AliveHeartBeatTimerTask();
+        Timer timer = new Timer(true);
+        timer.schedule(aliveHeartBeatTimerTask, ALIVE_HEARTBEAT_INTERVAL, ALIVE_HEARTBEAT_INTERVAL);
     }
 
     private static void printHelpAndExit() {
@@ -93,9 +69,34 @@ public class Controller implements Node {
             case Protocol.CORRUPT_CHUNK:
                 handleCorruptChunk(message);
                 break;
+            case Protocol.FILE_LIST_REQUEST:
+                handleFileListRequest(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
+    }
+
+    private void handleFileListRequest(Message message) {
+        FileListRequest request = (FileListRequest) message;
+        Utils.debug("received: " + request);
+
+        Set<String> fileNames;
+        synchronized (liveChunkServers) {
+            fileNames = liveChunkServers.stream()
+                .flatMap(lcs -> lcs.getFileNames().stream())
+                .collect(Collectors.toSet());
+        }
+
+        String sourceAddress = request.getSourceAddress();
+        TcpConnection tcpConnection = connections.get(sourceAddress);
+        if (tcpConnection == null) {
+            Utils.error("failed to find connection for: " + sourceAddress);
+            return;
+        }
+
+        FileListResponse response = new FileListResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), new ArrayList<>(fileNames));
+        tcpConnection.send(response.getBytes());
     }
 
     private void handleRegisterRequest(Message message) {
