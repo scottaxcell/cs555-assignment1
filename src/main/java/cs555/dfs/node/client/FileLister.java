@@ -26,11 +26,12 @@ public class FileLister {
         setIsRunning(false);
         List<String> fileNames = response.getFileNames();
         if (fileNames.isEmpty())
-            Utils.info("No files currently available for download");
+            Utils.info("No files currently available for download\n");
         else {
-            StringBuilder stringBuilder = new StringBuilder("Files available for download:");
+            StringBuilder stringBuilder = new StringBuilder("Files available for download:\n");
             int i = 0;
             for (String fileName : fileNames) {
+                stringBuilder.append("\t");
                 stringBuilder.append(++i);
                 stringBuilder.append(".\t");
                 stringBuilder.append(fileName);

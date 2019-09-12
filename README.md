@@ -7,19 +7,18 @@ Building a distributed, replicated, and fault tolerant path system
 * ~~create run script to launch controller, chunk servers, and client for easier testing~~
 * ~~add temp testing command line handling for easier testing~~
 * ~~figure out storing of already connected remote hosts, is this needed?~~
-* list available files from client, select one and prompt for dir to write to
+* ~~list available files from client, select one and prompt for dir to write to~~
 * ensure all classes are thread safe
 
 #### Code cleanup
-* standardize serialization and deserialization api to be shared among wireformats
-* improve small classes for grouping chunk info together FileDataChunk, WireChunk, etc.
-* improve try catch blocks by pushing them down
+* ~~standardize serialization and deserialization api to be shared among wireformats~~
+* ~~improve small classes for grouping chunk info together FileDataChunk, WireChunk, etc.~~
+* ~~improve try catch blocks by pushing them down~~
 
 ### Controller
 * ~~use chunk server free-space to determine applicable nodes~~
 * ~~heartbeat to chunk server to detect failures~~
 * ~~find 3 chunk servers for a chunk write~~
-
 
 ### Chunk server
 * ~~minor heartbeat -- notify of newly added chunks~~

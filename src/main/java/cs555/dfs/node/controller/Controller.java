@@ -123,6 +123,8 @@ public class Controller implements Node {
                 .findFirst()
                 .ifPresent(lcs -> lcs.minorHeartbeatUpdate(heartbeat));
         }
+        if (!heartbeat.getChunks().isEmpty())
+            printState();
     }
 
     private void handleMajorHeartbeat(Message message) {
@@ -134,6 +136,32 @@ public class Controller implements Node {
                 .findFirst()
                 .ifPresent(lcs -> lcs.majorHeartbeatUpdate(heartbeat));
         }
+        printState();
+    }
+
+    private void printState() {
+        StringBuilder stringBuilder = new StringBuilder("Current State\n");
+        stringBuilder.append("=============\n");
+        synchronized (liveChunkServers) {
+            for (LiveChunkServer server : liveChunkServers) {
+                stringBuilder.append(server.getServerAddress());
+                stringBuilder.append(":\n");
+                Set<String> fileNames = server.getFileNames();
+                for (String fileName : fileNames) {
+                    stringBuilder.append("  ");
+                    stringBuilder.append(fileName);
+                    stringBuilder.append(": ");
+                    List<Chunk> chunks = server.getChunks(fileName);
+                    for (int i = 0; i < chunks.size(); i++) {
+                        stringBuilder.append(chunks.get(i).getSequence());
+                        if (i != chunks.size() - 1)
+                            stringBuilder.append(", ");
+                    }
+                    stringBuilder.append("\n");
+                }
+            }
+        }
+        Utils.info(stringBuilder.toString());
     }
 
     private void handleStoreChunkRequest(Message message) {
