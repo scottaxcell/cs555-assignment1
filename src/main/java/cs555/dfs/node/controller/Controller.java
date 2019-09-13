@@ -364,6 +364,7 @@ public class Controller implements Node {
 
             for (LiveChunkServer deadServer : deadServers) {
                 liveChunkServers.remove(deadServer);
+                connections.remove(deadServer.getTcpConnection().getRemoteSocketAddress());
                 processDeadChunkServer(deadServer);
             }
         }

@@ -30,6 +30,10 @@ public class Chunk {
         this.timeStamp = timeStamp;
     }
 
+    public Path getPath() {
+        return path;
+    }
+
     public void writeChunk(byte[] bytes) {
         try {
             Utils.debug("writing " + path);

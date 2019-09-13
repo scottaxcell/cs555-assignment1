@@ -9,6 +9,7 @@ Building a distributed, replicated, and fault tolerant path system
 * ~~figure out storing of already connected remote hosts, is this needed?~~
 * ~~list available files from client, select one and prompt for dir to write to~~
 * ensure all classes are thread safe
+* ~~remove tcp connection from connections when it dies~~
 
 #### Code cleanup
 * ~~standardize serialization and deserialization api to be shared among wireformats~~
