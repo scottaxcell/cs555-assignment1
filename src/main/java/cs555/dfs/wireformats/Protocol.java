@@ -16,4 +16,7 @@ public class Protocol {
     public static final int ALIVE_HEARTBEAT = 312;
     public static final int FILE_LIST_REQUEST = 313;
     public static final int FILE_LIST_RESPONSE = 314;
+    public static final int STORE_SHARD_REQUEST = 315;
+    public static final int STORE_SHARD_RESPONSE = 316;
+    public static final int STORE_SHARD = 317;
 }

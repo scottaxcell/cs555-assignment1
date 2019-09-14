@@ -35,6 +35,16 @@ public class Client implements Node {
         }
     }
 
+    public static void main(String[] args) {
+        if (args.length != 2)
+            printHelpAndExit();
+
+        String controllerIp = args[0];
+        int controllerPort = Integer.parseInt(args[1]);
+
+        new Client(controllerIp, controllerPort).run();
+    }
+
     void run() {
         new Thread(tcpServer).start();
         handleCmdLineInput();
@@ -51,6 +61,34 @@ public class Client implements Node {
             Utils.out("\n");
 
             input = scanner.next();
+            if (input.startsWith("sfe")) {
+//                Utils.out("file: \n");
+//                String fileName = scanner.next();
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
+                Path path = Paths.get(fileName);
+                if (!path.toFile().exists()) {
+                    Utils.error("file does not exist: " + path);
+                    continue;
+                }
+                storeFileErasure(path);
+                printProgressBar();
+            }
+            else if (input.startsWith("rfe")) {
+//                Utils.out("file: \n");
+//                String fileName = scanner.next();
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
+                Path path = Paths.get(fileName);
+                if (!path.toFile().exists()) {
+                    Utils.error("file does not exist: " + path);
+                    continue;
+                }
+                retrieveFileErasure(path);
+                printProgressBar();
+            }
+            else if (input.startsWith("lfe")) {
+                listFilesErasure();
+                printProgressBar();
+            }
             if (input.startsWith("sf")) {
                 Utils.out("file: \n");
                 String fileName = scanner.next();
@@ -63,7 +101,7 @@ public class Client implements Node {
                 storeFile(path);
                 printProgressBar();
             }
-            if (input.startsWith("rf")) {
+            else if (input.startsWith("rf")) {
                 Utils.out("file: \n");
                 String fileName = scanner.next();
 //                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
@@ -89,6 +127,19 @@ public class Client implements Node {
         }
     }
 
+    private void listFilesErasure() {
+
+    }
+
+    private void retrieveFileErasure(Path path) {
+
+    }
+
+    private void storeFileErasure(Path path) {
+        Utils.info("Storing (erasure) " + path + " ...", false);
+        fileStorer.storeFileErasure(path);
+    }
+
     private void listFiles() {
         fileLister.setIsRunning(true);
         FileListRequest request = new FileListRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress());
@@ -108,13 +159,16 @@ public class Client implements Node {
     }
 
     private static void printMenu() {
-        Utils.out("****************\n");
+        Utils.out("***************************\n");
         Utils.out("h  -- print menu\n");
         Utils.out("sf -- store file\n");
+        Utils.out("sfe -- store file (erasure)\n");
         Utils.out("lf -- list files\n");
+        Utils.out("lfe -- list files (erasure)\n");
         Utils.out("rf -- read file\n");
+        Utils.out("rfe -- read file (erasure)\n");
         Utils.out("e  -- exit\n");
-        Utils.out("****************\n");
+        Utils.out("***************************\n");
     }
 
     private void storeFile(Path path) {
@@ -128,16 +182,6 @@ public class Client implements Node {
         fileReader.setFileName(path.getFileName().toString());
         RetrieveFileRequest request = new RetrieveFileRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path));
         controllerTcpConnection.send(request.getBytes());
-    }
-
-    public static void main(String[] args) {
-        if (args.length != 2)
-            printHelpAndExit();
-
-        String controllerIp = args[0];
-        int controllerPort = Integer.parseInt(args[1]);
-
-        new Client(controllerIp, controllerPort).run();
     }
 
     private static void printHelpAndExit() {

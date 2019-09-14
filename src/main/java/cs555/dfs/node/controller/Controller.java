@@ -72,9 +72,43 @@ public class Controller implements Node {
             case Protocol.FILE_LIST_REQUEST:
                 handleFileListRequest(message);
                 break;
+            case Protocol.STORE_SHARD_REQUEST:
+                handleStoreShardRequest(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
+    }
+
+    private void handleStoreShardRequest(Message message) {
+        StoreShardRequest request = (StoreShardRequest) message;
+        Utils.debug("received: " + request);
+        String fileName = request.getFileName();
+        int sequence = request.getSequence();
+        int fragment = request.getFragment();
+
+        List<LiveChunkServer> serversWithoutShard = findServersWithoutShard(new Shard(fileName, sequence, fragment))
+
+        List<String> validServerAddresses = serversWithoutShard.stream()
+            .map(LiveChunkServer::getServerAddress)
+            .collect(Collectors.toList());
+
+        if (!validServerAddresses.isEmpty()) {
+            Utils.error("failed to find live chunk server for shard");
+            return;
+        }
+
+        String sourceAddress = request.getSourceAddress();
+        TcpConnection tcpConnection = connections.get(sourceAddress);
+        if (tcpConnection == null) {
+            Utils.error("failed to find connection for: " + sourceAddress);
+            return;
+        }
+
+        StoreShardResponse response = new StoreShardResponse(getServerAddress(),
+            tcpConnection.getLocalSocketAddress(),
+            new cs555.dfs.wireformats.Shard(fileName, sequence, fragment), validServerAddresses.get(0));
+        tcpConnection.send(response.getBytes());
     }
 
     private void handleFileListRequest(Message message) {
@@ -127,18 +161,6 @@ public class Controller implements Node {
             printState();
     }
 
-    private void handleMajorHeartbeat(Message message) {
-        Heartbeat heartbeat = (Heartbeat) message;
-        Utils.debug("received: " + heartbeat);
-        synchronized (liveChunkServers) {
-            liveChunkServers.stream()
-                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
-                .findFirst()
-                .ifPresent(lcs -> lcs.majorHeartbeatUpdate(heartbeat));
-        }
-        printState();
-    }
-
     private void printState() {
         StringBuilder stringBuilder = new StringBuilder("Current State\n");
         stringBuilder.append("=============\n");
@@ -162,6 +184,18 @@ public class Controller implements Node {
             }
         }
         Utils.info(stringBuilder.toString());
+    }
+
+    private void handleMajorHeartbeat(Message message) {
+        Heartbeat heartbeat = (Heartbeat) message;
+        Utils.debug("received: " + heartbeat);
+        synchronized (liveChunkServers) {
+            liveChunkServers.stream()
+                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
+                .findFirst()
+                .ifPresent(lcs -> lcs.majorHeartbeatUpdate(heartbeat));
+        }
+        printState();
     }
 
     private void handleStoreChunkRequest(Message message) {

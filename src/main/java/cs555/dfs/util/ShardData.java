@@ -2,20 +2,23 @@ package cs555.dfs.util;
 
 import java.util.Objects;
 
-public class ChunkData {
+public class ShardData {
     public final String fileName;
     public final int sequence;
+    public final int fragment;
     public byte[] data;
 
-    public ChunkData(String fileName, int sequence, byte[] data) {
+    public ShardData(String fileName, int sequence, int fragment, byte[] data) {
         this.fileName = fileName;
         this.sequence = sequence;
+        this.fragment = fragment;
         this.data = data;
     }
 
-    public ChunkData(String fileName, int sequence) {
+    public ShardData(String fileName, int sequence, int fragment) {
         this.fileName = fileName;
         this.sequence = sequence;
+        this.fragment = fragment;
     }
 
     @Override
@@ -37,6 +40,10 @@ public class ChunkData {
 
     public int getSequence() {
         return sequence;
+    }
+
+    public int getFragment() {
+        return fragment;
     }
 
     public byte[] getData() {
