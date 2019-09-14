@@ -1,5 +1,7 @@
 package cs555.dfs.wireformats;
 
+import cs555.dfs.wireformats.erasure.*;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -42,6 +44,8 @@ public class MessageFactory {
                 return new FileListRequest(data);
             case Protocol.FILE_LIST_RESPONSE:
                 return new FileListResponse(data);
+
+
             case Protocol.STORE_SHARD_REQUEST:
                 return new StoreShardRequest(data);
             case Protocol.STORE_SHARD_RESPONSE:
@@ -54,6 +58,14 @@ public class MessageFactory {
                 return new FileListResponseErasure(data);
             case Protocol.SHARD_HEARTBEAT:
                 return new ShardHeartbeat(data);
+            case Protocol.RETRIEVE_FILE_REQUEST_ERASURE:
+                return new RetrieveFileRequestErasure(data);
+            case Protocol.RETRIEVE_FILE_RESPONSE_ERASURE:
+                return new RetrieveFileResponseErasure(data);
+            case Protocol.RETRIEVE_SHARD_REQUEST:
+                return new RetrieveShardRequest(data);
+            case Protocol.RETRIEVE_SHARD_RESPONSE:
+                return new RetrieveShardResponse(data);
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }

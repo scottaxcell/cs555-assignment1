@@ -5,6 +5,7 @@ import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
+import cs555.dfs.wireformats.erasure.*;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -183,7 +184,11 @@ public class Client implements Node {
     }
 
     private void retrieveFileErasure(Path path) {
-        // todo
+        Utils.info("Retrieving (erasure) " + path + " ...", false);
+        fileReader.setIsRunning(true);
+        fileReader.setFileName(path.getFileName().toString());
+        RetrieveFileRequestErasure request = new RetrieveFileRequestErasure(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path));
+        controllerTcpConnection.send(request.getBytes());
     }
 
     private static void printHelpAndExit() {
@@ -214,11 +219,19 @@ public class Client implements Node {
             case Protocol.FILE_LIST_RESPONSE:
                 handleFileListResponse(message);
                 break;
+
+
             case Protocol.STORE_SHARD_RESPONSE:
                 handleStoreShardResponse(message);
                 break;
             case Protocol.FILE_LIST_RESPONSE_ERASURE:
                 handleFileListResponseErasure(message);
+                break;
+            case Protocol.RETRIEVE_FILE_RESPONSE_ERASURE:
+                handleRetrieveFileResponseErasure(message);
+                break;
+            case Protocol.RETRIEVE_SHARD_RESPONSE:
+                handleRetrieveShardResponse(message);
                 break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
@@ -255,10 +268,22 @@ public class Client implements Node {
         fileReader.handleRetrieveFileResponse(response);
     }
 
+    private void handleRetrieveFileResponseErasure(Message message) {
+        RetrieveFileResponseErasure response = (RetrieveFileResponseErasure) message;
+        Utils.debug("received: " + response);
+        fileReader.handleRetrieveFileResponseErasure(response);
+    }
+
     private void handleRetrieveChunkResponse(Message message) {
         RetrieveChunkResponse response = (RetrieveChunkResponse) message;
         Utils.debug("received: " + response);
         fileReader.handleRetrieveChunkResponse(response);
+    }
+
+    private void handleRetrieveShardResponse(Message message) {
+        RetrieveShardResponse response = (RetrieveShardResponse) message;
+        Utils.debug("received: " + response);
+        fileReader.handleRetrieveShardResponse(response);
     }
 
     private void handleChunkCorruption(Message message) {

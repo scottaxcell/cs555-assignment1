@@ -1,10 +1,15 @@
 package cs555.dfs.node.chunkserver;
 
 import cs555.dfs.node.Chunk;
+import cs555.dfs.node.Shard;
 import cs555.dfs.transport.TcpSender;
 import cs555.dfs.util.FileChunkifier;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
+import cs555.dfs.wireformats.erasure.RetrieveShardRequest;
+import cs555.dfs.wireformats.erasure.RetrieveShardResponse;
+import cs555.dfs.wireformats.erasure.ShardHeartbeat;
+import cs555.dfs.wireformats.erasure.StoreShard;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -82,6 +87,11 @@ class ChunkStorage {
         tcpSender.send(forwardStoreChunk.getBytes());
     }
 
+    private Path generateWritePath(String fileName, int chunkSequence) {
+        Path path = Paths.get(storageDir.toString(), fileName + "_chunk" + chunkSequence);
+        return path;
+    }
+
     public void handleStoreShard(StoreShard storeShard) {
         String fileName = storeShard.getFileName();
         int sequence = storeShard.getSequence();
@@ -102,14 +112,10 @@ class ChunkStorage {
 
         shard.writeShard(fileData);
 
-        ShardHeartbeat shardHeartbeat = new ShardHeartbeat(server.getServerAddress(), server.getControllerTcpConnection().getLocalSocketAddress(),
+        ShardHeartbeat shardHeartbeat = new ShardHeartbeat(server.getServerAddress(),
+            server.getControllerTcpConnection().getLocalSocketAddress(),
             Collections.singletonList(shard));
         server.sendMessageToController(shardHeartbeat);
-    }
-
-    private Path generateWritePath(String fileName, int chunkSequence) {
-        Path path = Paths.get(storageDir.toString(), fileName + "_chunk" + chunkSequence);
-        return path;
     }
 
     private Path generateShardWritePath(String fileName, int chunkSequence, int fragment) {
@@ -176,18 +182,41 @@ class ChunkStorage {
             .orElse(null);
     }
 
+    synchronized List<Chunk> getChunks() {
+        return filesToChunks.values().stream()
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
+    }
+
+    void handleRetrieveShardRequest(RetrieveShardRequest request) {
+        String fileName = request.getFileName();
+        int sequence = request.getSequence();
+        int fragment = request.getFragment();
+        Shard shard = getShard(fileName, sequence, fragment);
+        if (shard == null) {
+            Utils.error("did not find shard " + shard);
+            return;
+        }
+
+        TcpSender tcpSender = TcpSender.of(request.getServerAddress());
+        if (tcpSender == null) {
+            Utils.error("tcpServer is null");
+            return;
+        }
+
+        byte[] bytes = shard.readShard();
+        RetrieveShardResponse response = new RetrieveShardResponse(server.getServerAddress(),
+            tcpSender.getLocalSocketAddress(),
+            new cs555.dfs.wireformats.erasure.Shard(fileName, sequence, fragment), bytes);
+        tcpSender.send(response.getBytes());
+    }
+
     private cs555.dfs.node.Shard getShard(String fileName, int sequence, int fragment) {
         cs555.dfs.node.Shard finderShard = new cs555.dfs.node.Shard(fileName, sequence, fragment, generateShardWritePath(fileName, sequence, fragment));
         return getShards().stream()
             .filter(s -> s.equals(finderShard))
             .findFirst()
             .orElse(null);
-    }
-
-    synchronized List<Chunk> getChunks() {
-        return filesToChunks.values().stream()
-            .flatMap(Collection::stream)
-            .collect(Collectors.toList());
     }
 
     synchronized List<cs555.dfs.node.Shard> getShards() {

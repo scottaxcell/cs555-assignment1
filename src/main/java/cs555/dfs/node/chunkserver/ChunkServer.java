@@ -5,6 +5,8 @@ import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
+import cs555.dfs.wireformats.erasure.RetrieveShardRequest;
+import cs555.dfs.wireformats.erasure.StoreShard;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -86,8 +88,13 @@ public class ChunkServer implements Node {
             case Protocol.ALIVE_HEARTBEAT:
                 handleAliveHeartbeat(message);
                 break;
+
+
             case Protocol.STORE_SHARD:
                 handleStoreShard(message);
+                break;
+            case Protocol.RETRIEVE_SHARD_REQUEST:
+                handleRetrieveShardRequest(message);
                 break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
@@ -121,6 +128,12 @@ public class ChunkServer implements Node {
         RetrieveChunkRequest request = (RetrieveChunkRequest) message;
         Utils.debug("received: " + request);
         chunkStorage.handleRetrieveChunkRequest(request);
+    }
+
+    private void handleRetrieveShardRequest(Message message) {
+        RetrieveShardRequest request = (RetrieveShardRequest) message;
+        Utils.debug("received: " + request);
+        chunkStorage.handleRetrieveShardRequest(request);
     }
 
     @Override

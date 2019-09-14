@@ -2,7 +2,14 @@ package cs555.dfs.node.client;
 
 import cs555.dfs.transport.TcpSender;
 import cs555.dfs.util.*;
-import cs555.dfs.wireformats.*;
+import cs555.dfs.wireformats.Chunk;
+import cs555.dfs.wireformats.StoreChunk;
+import cs555.dfs.wireformats.StoreChunkRequest;
+import cs555.dfs.wireformats.StoreChunkResponse;
+import cs555.dfs.wireformats.erasure.Shard;
+import cs555.dfs.wireformats.erasure.StoreShard;
+import cs555.dfs.wireformats.erasure.StoreShardRequest;
+import cs555.dfs.wireformats.erasure.StoreShardResponse;
 
 import java.nio.file.Path;
 import java.util.ArrayList;

@@ -1,17 +1,24 @@
-package cs555.dfs.wireformats;
+package cs555.dfs.wireformats.erasure;
+
+import cs555.dfs.wireformats.Message;
+import cs555.dfs.wireformats.MessageHeader;
+import cs555.dfs.wireformats.Protocol;
+import cs555.dfs.wireformats.WireformatUtils;
 
 import java.io.*;
 
-public class FileListRequestErasure implements Message {
+public class RetrieveFileRequestErasure implements Message {
     private MessageHeader messageHeader;
+    private String fileName;
 
-    public FileListRequestErasure(String serverAddress, String sourceAdress) {
-        messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAdress);
+    public RetrieveFileRequestErasure(String serverAddress, String sourceAddress, String fileName) {
+        this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
+        this.fileName = fileName;
     }
 
     @Override
     public int getProtocol() {
-        return Protocol.FILE_LIST_REQUEST_ERASURE;
+        return Protocol.RETRIEVE_FILE_REQUEST_ERASURE;
     }
 
     @Override
@@ -20,7 +27,10 @@ public class FileListRequestErasure implements Message {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(byteArrayOutputStream));
 
-            messageHeader.serialize(dataOutputStream);
+            dataOutputStream.write(messageHeader.getBytes());
+
+            dataOutputStream.writeInt(fileName.length());
+            dataOutputStream.write(fileName.getBytes());
 
             dataOutputStream.flush();
 
@@ -37,12 +47,13 @@ public class FileListRequestErasure implements Message {
         }
     }
 
-    public FileListRequestErasure(byte[] bytes) {
+    public RetrieveFileRequestErasure(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
-            messageHeader = MessageHeader.deserialize(dataInputStream);
+            this.messageHeader = MessageHeader.deserialize(dataInputStream);
+            fileName = WireformatUtils.deserializeString(dataInputStream);
 
             byteArrayInputStream.close();
             dataInputStream.close();
@@ -54,13 +65,14 @@ public class FileListRequestErasure implements Message {
 
     @Override
     public String toString() {
-        return "FileListRequestErasure{" +
+        return "RetrieveFileRequestErasure{" +
             "messageHeader=" + messageHeader +
+            ", fileName='" + fileName + '\'' +
             '}';
     }
 
-    public String getServerAddress() {
-        return messageHeader.getServerAddress();
+    public String getFileName() {
+        return fileName;
     }
 
     public String getSourceAddress() {

@@ -1,4 +1,9 @@
-package cs555.dfs.wireformats;
+package cs555.dfs.wireformats.erasure;
+
+import cs555.dfs.wireformats.Message;
+import cs555.dfs.wireformats.MessageHeader;
+import cs555.dfs.wireformats.Protocol;
+import cs555.dfs.wireformats.WireformatUtils;
 
 import java.io.*;
 import java.util.ArrayList;

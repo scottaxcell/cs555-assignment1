@@ -5,7 +5,7 @@ import cs555.dfs.node.Shard;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.wireformats.Heartbeat;
 import cs555.dfs.wireformats.Message;
-import cs555.dfs.wireformats.ShardHeartbeat;
+import cs555.dfs.wireformats.erasure.ShardHeartbeat;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

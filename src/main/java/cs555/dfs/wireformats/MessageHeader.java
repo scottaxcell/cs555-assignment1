@@ -7,7 +7,7 @@ public class MessageHeader implements Message {
     private final String serverAddress;
     private final String sourceAddress;
 
-    MessageHeader(int protocol, String serverAddress, String sourceAddress) {
+    public MessageHeader(int protocol, String serverAddress, String sourceAddress) {
         this.protocol = protocol;
         this.serverAddress = serverAddress;
         this.sourceAddress = sourceAddress;

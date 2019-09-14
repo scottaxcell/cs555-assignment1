@@ -2,7 +2,7 @@ package cs555.dfs.node.client;
 
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.FileListResponse;
-import cs555.dfs.wireformats.FileListResponseErasure;
+import cs555.dfs.wireformats.erasure.FileListResponseErasure;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;

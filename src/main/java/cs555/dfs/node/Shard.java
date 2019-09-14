@@ -5,6 +5,7 @@ import cs555.dfs.util.Utils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 
 public class Shard {
     private final String fileName;
@@ -55,6 +56,21 @@ public class Shard {
             ", fragment=" + fragment +
             ", path=" + path +
             '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Shard shard = (Shard) o;
+        return sequence == shard.sequence &&
+            fragment == shard.fragment &&
+            fileName.equals(shard.fileName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(fileName, sequence, fragment);
     }
 
     public String getFileName() {

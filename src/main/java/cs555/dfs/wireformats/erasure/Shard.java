@@ -1,4 +1,6 @@
-package cs555.dfs.wireformats;
+package cs555.dfs.wireformats.erasure;
+
+import cs555.dfs.wireformats.WireformatUtils;
 
 import java.io.*;
 
@@ -30,11 +32,11 @@ public class Shard {
         }
     }
 
-    public static cs555.dfs.wireformats.Shard deserialize(DataInputStream dataInputStream) {
+    public static Shard deserialize(DataInputStream dataInputStream) {
         String fileName = WireformatUtils.deserializeString(dataInputStream);
         int sequence = WireformatUtils.deserializeInt(dataInputStream);
         int fragment = WireformatUtils.deserializeInt(dataInputStream);
-        return new cs555.dfs.wireformats.Shard(fileName, sequence, fragment);
+        return new Shard(fileName, sequence, fragment);
     }
 
     public byte[] getBytes() {

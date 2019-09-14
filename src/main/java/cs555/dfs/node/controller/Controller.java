@@ -1,13 +1,14 @@
 package cs555.dfs.node.controller;
 
 import cs555.dfs.node.Chunk;
-import cs555.dfs.node.Shard;
 import cs555.dfs.node.Node;
+import cs555.dfs.node.Shard;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpSender;
 import cs555.dfs.transport.TcpServer;
 import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.*;
+import cs555.dfs.wireformats.erasure.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -73,6 +74,8 @@ public class Controller implements Node {
             case Protocol.FILE_LIST_REQUEST:
                 handleFileListRequest(message);
                 break;
+
+
             case Protocol.STORE_SHARD_REQUEST:
                 handleStoreShardRequest(message);
                 break;
@@ -81,6 +84,9 @@ public class Controller implements Node {
                 break;
             case Protocol.SHARD_HEARTBEAT:
                 handleShardHeartbeat(message);
+                break;
+            case Protocol.RETRIEVE_FILE_REQUEST_ERASURE:
+                handleRetrieveFileRequestErasure(message);
                 break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
@@ -114,7 +120,7 @@ public class Controller implements Node {
 
         StoreShardResponse response = new StoreShardResponse(getServerAddress(),
             tcpConnection.getLocalSocketAddress(),
-            new cs555.dfs.wireformats.Shard(fileName, sequence, fragment),
+            new cs555.dfs.wireformats.erasure.Shard(fileName, sequence, fragment),
             validServerAddresses.get(0));
 
         tcpConnection.send(response.getBytes());
@@ -357,6 +363,39 @@ public class Controller implements Node {
         }
 
         RetrieveFileResponse response = new RetrieveFileResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, chunkLocations);
+        tcpConnection.send(response.getBytes());
+    }
+
+    private void handleRetrieveFileRequestErasure(Message message) {
+        RetrieveFileRequestErasure request = (RetrieveFileRequestErasure) message;
+        Utils.debug("received: " + request);
+
+        String fileName = request.getFileName();
+        List<ShardLocation> shardLocations = new ArrayList<>();
+        synchronized (liveChunkServers) {
+            for (LiveChunkServer lcs : liveChunkServers) {
+                List<Shard> shards = lcs.getShards(fileName);
+                if (shards == null)
+                    continue;
+                for (Shard s : shards) {
+                    ShardLocation shardLocation = new ShardLocation(new cs555.dfs.wireformats.erasure.Shard(fileName, s.getSequence(), s.getFragment()), lcs.getServerAddress());
+                    if (!shardLocations.contains(shardLocation))
+                        shardLocations.add(shardLocation);
+                }
+            }
+        }
+
+        if (shardLocations.isEmpty())
+            return;
+
+        String sourceAddress = request.getSourceAddress();
+        TcpConnection tcpConnection = connections.get(sourceAddress);
+        if (tcpConnection == null) {
+            Utils.error("failed to find connection for: " + sourceAddress);
+            return;
+        }
+
+        RetrieveFileResponseErasure response = new RetrieveFileResponseErasure(getServerAddress(), tcpConnection.getLocalSocketAddress(), fileName, shardLocations);
         tcpConnection.send(response.getBytes());
     }
 
