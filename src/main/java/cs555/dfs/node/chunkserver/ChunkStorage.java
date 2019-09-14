@@ -20,6 +20,7 @@ class ChunkStorage {
     private final Path storageDir;
     private final List<Chunk> newChunks = new ArrayList<>();
     private Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
+    private Map<String, List<cs555.dfs.node.Shard>> filesToShards = new ConcurrentHashMap<>();
 
     ChunkStorage(ChunkServer server, String serverName) {
         this.server = server;
@@ -72,12 +73,12 @@ class ChunkStorage {
         }
 
         List<String> nextNextServers = nextServers.stream()
-                .skip(1).collect(Collectors.toList());
+            .skip(1).collect(Collectors.toList());
 
         StoreChunk forwardStoreChunk = new StoreChunk(server.getServerAddress(),
-                tcpSender.getLocalSocketAddress(),
-                new cs555.dfs.wireformats.Chunk(fileName, sequence),
-                chunkData, nextNextServers);
+            tcpSender.getLocalSocketAddress(),
+            new cs555.dfs.wireformats.Chunk(fileName, sequence),
+            chunkData, nextNextServers);
         tcpSender.send(forwardStoreChunk.getBytes());
     }
 
@@ -120,8 +121,8 @@ class ChunkStorage {
 
         if (corruptSlices.isEmpty()) {
             RetrieveChunkResponse response = new RetrieveChunkResponse(server.getServerAddress(),
-                    tcpSender.getLocalSocketAddress(),
-                    new cs555.dfs.wireformats.Chunk(fileName, sequence), bytes);
+                tcpSender.getLocalSocketAddress(),
+                new cs555.dfs.wireformats.Chunk(fileName, sequence), bytes);
             tcpSender.send(response.getBytes());
         }
         else
@@ -130,8 +131,8 @@ class ChunkStorage {
 
     private void sendCorruptChunkMessage(cs555.dfs.wireformats.Chunk chunk, List<Integer> corruptSlices, TcpSender tcpSender) {
         CorruptChunk corruptChunk = new CorruptChunk(server.getServerAddress(),
-                tcpSender.getLocalSocketAddress(),
-                chunk, corruptSlices);
+            tcpSender.getLocalSocketAddress(),
+            chunk, corruptSlices);
         tcpSender.send(corruptChunk.getBytes());
 
         server.sendMessageToController(corruptChunk);
@@ -140,15 +141,15 @@ class ChunkStorage {
     private Chunk getChunk(String fileName, int sequence) {
         Chunk finderChunk = new Chunk(fileName, sequence, generateWritePath(fileName, sequence));
         return getChunks().stream()
-                .filter(c -> c.equals(finderChunk))
-                .findFirst()
-                .orElse(null);
+            .filter(c -> c.equals(finderChunk))
+            .findFirst()
+            .orElse(null);
     }
 
     synchronized List<Chunk> getChunks() {
         return filesToChunks.values().stream()
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
     }
 
     synchronized List<Chunk> getNewChunks() {
@@ -174,9 +175,30 @@ class ChunkStorage {
         TcpSender tcpSender = TcpSender.of(corruptChunkServerAddress);
 
         StoreChunk storeChunk = new StoreChunk(server.getServerAddress(),
-                tcpSender.getLocalSocketAddress(),
-                new cs555.dfs.wireformats.Chunk(fileName, sequence),
-                bytes, Collections.emptyList());
+            tcpSender.getLocalSocketAddress(),
+            new cs555.dfs.wireformats.Chunk(fileName, sequence),
+            bytes, Collections.emptyList());
         tcpSender.send(storeChunk.getBytes());
+    }
+
+    public void handleStoreShard(StoreShard storeShard) {
+        String fileName = storeShard.getFileName();
+        int sequence = storeShard.getSequence();
+        int fragment = storeShard.getFragment();
+        Path path = generateWritePath(fileName, sequence);
+
+        cs555.dfs.node.Shard shard = new cs555.dfs.node.Shard(fileName, sequence, fragment, path);
+        filesToShards.computeIfAbsent(fileName, fn -> new ArrayList<>());
+
+        List<cs555.dfs.node.Shard> shards = filesToShards.get(fileName);
+        if (!shards.contains(shard))
+            shards.add(shard);
+
+        int idx = shards.indexOf(shard);
+        shard = shards.get(idx);
+
+        byte[] fileData = storeShard.getFileData();
+
+        shard.writeShard(fileData);
     }
 }

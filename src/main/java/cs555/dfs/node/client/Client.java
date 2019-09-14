@@ -212,9 +212,17 @@ public class Client implements Node {
             case Protocol.FILE_LIST_RESPONSE:
                 handleFileListResponse(message);
                 break;
+            case Protocol.STORE_SHARD_RESPONSE:
+                handleStoreShardResponse(message);
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
+    }
+
+    private void handleStoreShardResponse(Message message) {
+        StoreShardResponse response = (StoreShardResponse) message;
+        Utils.debug("received: " + response);
+        fileStorer.handleStoreShardResponse(response);
     }
 
     private void handleFileListResponse(Message message) {

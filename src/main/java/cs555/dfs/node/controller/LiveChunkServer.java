@@ -4,6 +4,7 @@ import cs555.dfs.node.Chunk;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.wireformats.Heartbeat;
 import cs555.dfs.wireformats.Message;
+import cs555.dfs.wireformats.Shard;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,6 +13,7 @@ public class LiveChunkServer {
     private final TcpConnection tcpConnection;
     private final String serverAddress;
     private Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
+    private Map<String, List<Shard>> filesToShards = new ConcurrentHashMap<>();
     private long usableSpace;
     private int totalNumberOfChunks;
 
@@ -119,5 +121,17 @@ public class LiveChunkServer {
 
     public Set<String> getFileNames() {
         return filesToChunks.keySet();
+    }
+
+    public boolean containsShard(String fileName, int sequence, int fragment) {
+        List<Shard> shards = filesToShards.get(fileName);
+        if (shards == null)
+            return false;
+
+        for (Shard shard : shards)
+            if (shard.getSequence() == sequence && shard.getFragment() == fragment)
+                return true;
+
+        return false;
     }
 }

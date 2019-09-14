@@ -4,6 +4,7 @@ import cs555.dfs.transport.TcpSender;
 import cs555.dfs.util.*;
 import cs555.dfs.wireformats.*;
 
+import javax.xml.crypto.Data;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -114,5 +115,36 @@ class FileStorer {
 
     public boolean isRunning() {
         return isRunning.get();
+    }
+
+    public void handleStoreShardResponse(StoreShardResponse response) {
+        String fileName = response.getFileName();
+        int sequence = response.getChunkSequence();
+        int fragment = response.getFragment();
+        String shardServerAddress = response.getShardServerAddress();
+        ShardData shardData;
+
+        synchronized (shardDataList) {
+            ShardData finderShard = new ShardData(fileName, sequence, fragment);
+            int idx = shardDataList.indexOf(finderShard);
+            if (idx == -1) {
+                Utils.error("ShardData not found");
+                return;
+            }
+            shardData = shardDataList.get(idx);
+            shardDataList.remove(shardData);
+        }
+
+        TcpSender tcpSender = TcpSender.of(shardServerAddress);
+        if (tcpSender == null) {
+            Utils.error("tcpServer is null");
+            return;
+        }
+
+        StoreShard storeShard = new StoreShard(client.getServerAddress(), tcpSender.getLocalSocketAddress(),
+            new Shard(fileName, shardData.sequence, shardData.fragment), shardData.data);
+        tcpSender.send(storeShard.getBytes());
+
+        sendNextStoreChunkRequest();
     }
 }

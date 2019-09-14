@@ -44,6 +44,10 @@ public class MessageFactory {
                 return new FileListResponse(data);
             case Protocol.STORE_SHARD_REQUEST:
                 return new StoreShardRequest(data);
+            case Protocol.STORE_SHARD_RESPONSE:
+                return new StoreShardResponse(data);
+            case Protocol.STORE_SHARD:
+                return new StoreShard(data);
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }

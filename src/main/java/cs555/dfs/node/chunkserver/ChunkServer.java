@@ -86,6 +86,9 @@ public class ChunkServer implements Node {
             case Protocol.ALIVE_HEARTBEAT:
                 handleAliveHeartbeat(message);
                 break;
+            case Protocol.STORE_SHARD:
+                handleStoreShard(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
@@ -100,14 +103,18 @@ public class ChunkServer implements Node {
         ReplicateChunk replicateChunk = (ReplicateChunk) message;
         Utils.debug("received: " + replicateChunk);
         chunkStorage.handleReplicateChunk(replicateChunk);
-
     }
 
     private void handleStoreChunk(Message message) {
         StoreChunk storeChunk = (StoreChunk) message;
         Utils.debug("received: " + storeChunk);
         chunkStorage.handleStoreChunk(storeChunk);
+    }
 
+    private void handleStoreShard(Message message) {
+        StoreShard storeShard = (StoreShard) message;
+        Utils.debug("received: " + storeShard);
+        chunkStorage.handleStoreShard(storeShard);
     }
 
     private void handleRetrieveChunkRequest(Message message) {

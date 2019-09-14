@@ -2,20 +2,20 @@ package cs555.dfs.wireformats;
 
 import java.io.*;
 
-public class StoreShardResponse implements Message {
+public class StoreShard implements Message {
     private MessageHeader messageHeader;
     private Shard shard;
-    private String shardServerAddress;
+    private byte[] fileData;
 
-    public StoreShardResponse(String serverAddress, String sourceAddress, Shard shard, String shardServerAddress) {
+    public StoreShard(String serverAddress, String sourceAddress, Shard shard, byte[] fileData) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.shard = shard;
-        this.shardServerAddress = shardServerAddress;
+        this.fileData = fileData;
     }
 
     @Override
     public int getProtocol() {
-        return Protocol.STORE_CHUNK_RESPONSE;
+        return Protocol.STORE_SHARD;
     }
 
     @Override
@@ -26,7 +26,7 @@ public class StoreShardResponse implements Message {
 
             messageHeader.serialize(dataOutputStream);
             shard.serialize(dataOutputStream);
-            WireformatUtils.serializeString(dataOutputStream, shardServerAddress);
+            WireformatUtils.serializeBytes(dataOutputStream, fileData);
 
             dataOutputStream.flush();
 
@@ -43,23 +43,14 @@ public class StoreShardResponse implements Message {
         }
     }
 
-    @Override
-    public String toString() {
-        return "StoreShardResponse{" +
-            "messageHeader=" + messageHeader +
-            ", shard=" + shard +
-            ", shardServerAddress='" + shardServerAddress + '\'' +
-            '}';
-    }
-
-    public StoreShardResponse(byte[] bytes) {
+    public StoreShard(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
             messageHeader = MessageHeader.deserialize(dataInputStream);
             shard = Shard.deserialize(dataInputStream);
-            shardServerAddress = WireformatUtils.deserializeString(dataInputStream);
+            fileData = WireformatUtils.deserializeBytes(dataInputStream);
 
             byteArrayInputStream.close();
             dataInputStream.close();
@@ -69,11 +60,12 @@ public class StoreShardResponse implements Message {
         }
     }
 
+
     public String getFileName() {
         return shard.getFileName();
     }
 
-    public int getChunkSequence() {
+    public int getSequence() {
         return shard.getSequence();
     }
 
@@ -81,11 +73,7 @@ public class StoreShardResponse implements Message {
         return shard.getFragment();
     }
 
-    public String getSourceAddress() {
-        return messageHeader.getSourceAddress();
-    }
-
-    public String getShardServerAddress() {
-        return shardServerAddress;
+    public byte[] getFileData() {
+        return fileData;
     }
 }

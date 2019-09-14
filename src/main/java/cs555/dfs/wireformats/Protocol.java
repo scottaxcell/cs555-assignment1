@@ -19,4 +19,8 @@ public class Protocol {
     public static final int STORE_SHARD_REQUEST = 315;
     public static final int STORE_SHARD_RESPONSE = 316;
     public static final int STORE_SHARD = 317;
+    public static final int RETRIEVE_FILE_REQUEST_ERASURE = 318;
+    public static final int RETRIEVE_FILE_RESPONSE_ERASURE = 319;
+    public static final int RETRIEVE_SHARD_REQUEST = 320;
+    public static final int RETRIEVE_SHARD_RESPONSE = 321;
 }

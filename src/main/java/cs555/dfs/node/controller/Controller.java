@@ -87,13 +87,13 @@ public class Controller implements Node {
         int sequence = request.getSequence();
         int fragment = request.getFragment();
 
-        List<LiveChunkServer> serversWithoutShard = findServersWithoutShard(new Shard(fileName, sequence, fragment))
+        List<LiveChunkServer> serversWithoutShard = findServersWithoutShard(new Shard(fileName, sequence, fragment));
 
         List<String> validServerAddresses = serversWithoutShard.stream()
             .map(LiveChunkServer::getServerAddress)
             .collect(Collectors.toList());
 
-        if (!validServerAddresses.isEmpty()) {
+        if (validServerAddresses.isEmpty()) {
             Utils.error("failed to find live chunk server for shard");
             return;
         }
@@ -107,8 +107,23 @@ public class Controller implements Node {
 
         StoreShardResponse response = new StoreShardResponse(getServerAddress(),
             tcpConnection.getLocalSocketAddress(),
-            new cs555.dfs.wireformats.Shard(fileName, sequence, fragment), validServerAddresses.get(0));
+            new cs555.dfs.wireformats.Shard(fileName, sequence, fragment),
+            validServerAddresses.get(0));
+
         tcpConnection.send(response.getBytes());
+    }
+
+    private List<LiveChunkServer> findServersWithoutShard(Shard shard) {
+        List<LiveChunkServer> servers;
+
+        synchronized (liveChunkServers) {
+            servers = liveChunkServers.stream()
+                .filter(lcs -> !lcs.containsShard(shard.getFileName(), shard.getSequence(), shard.getFragment()))
+                .sorted(Comparator.comparingLong(LiveChunkServer::getUsableSpace).reversed())
+                .collect(Collectors.toList());
+        }
+
+        return servers;
     }
 
     private void handleFileListRequest(Message message) {
