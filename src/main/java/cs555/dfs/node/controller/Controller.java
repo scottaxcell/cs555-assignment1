@@ -1,6 +1,7 @@
 package cs555.dfs.node.controller;
 
 import cs555.dfs.node.Chunk;
+import cs555.dfs.node.Shard;
 import cs555.dfs.node.Node;
 import cs555.dfs.transport.TcpConnection;
 import cs555.dfs.transport.TcpSender;
@@ -75,6 +76,12 @@ public class Controller implements Node {
             case Protocol.STORE_SHARD_REQUEST:
                 handleStoreShardRequest(message);
                 break;
+            case Protocol.FILE_LIST_REQUEST_ERASURE:
+                handleFileListRequestErasure(message);
+                break;
+            case Protocol.SHARD_HEARTBEAT:
+                handleShardHeartbeat(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
@@ -133,6 +140,7 @@ public class Controller implements Node {
         Set<String> fileNames;
         synchronized (liveChunkServers) {
             fileNames = liveChunkServers.stream()
+                .filter(lcs -> !lcs.getChunks().isEmpty())
                 .flatMap(lcs -> lcs.getFileNames().stream())
                 .collect(Collectors.toSet());
         }
@@ -145,6 +153,29 @@ public class Controller implements Node {
         }
 
         FileListResponse response = new FileListResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(), new ArrayList<>(fileNames));
+        tcpConnection.send(response.getBytes());
+    }
+
+    private void handleFileListRequestErasure(Message message) {
+        FileListRequestErasure request = (FileListRequestErasure) message;
+        Utils.debug("received: " + request);
+
+        Set<String> fileNames;
+        synchronized (liveChunkServers) {
+            fileNames = liveChunkServers.stream()
+                .flatMap(lcs -> lcs.getShards().stream())
+                .map(Shard::getFileName)
+                .collect(Collectors.toSet());
+        }
+
+        String sourceAddress = request.getSourceAddress();
+        TcpConnection tcpConnection = connections.get(sourceAddress);
+        if (tcpConnection == null) {
+            Utils.error("failed to find connection for: " + sourceAddress);
+            return;
+        }
+
+        FileListResponseErasure response = new FileListResponseErasure(getServerAddress(), tcpConnection.getLocalSocketAddress(), new ArrayList<>(fileNames));
         tcpConnection.send(response.getBytes());
     }
 
@@ -192,6 +223,46 @@ public class Controller implements Node {
                     for (int i = 0; i < chunks.size(); i++) {
                         stringBuilder.append(chunks.get(i).getSequence());
                         if (i != chunks.size() - 1)
+                            stringBuilder.append(", ");
+                    }
+                    stringBuilder.append("\n");
+                }
+            }
+        }
+        Utils.info(stringBuilder.toString());
+    }
+
+    private void handleShardHeartbeat(Message message) {
+        ShardHeartbeat heartbeat = (ShardHeartbeat) message;
+        Utils.debug("received: " + heartbeat);
+        synchronized (liveChunkServers) {
+            liveChunkServers.stream()
+                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
+                .findFirst()
+                .ifPresent(lcs -> lcs.shardHeartbeatUpdate(heartbeat));
+        }
+        printShardState();
+    }
+
+    private void printShardState() {
+        StringBuilder stringBuilder = new StringBuilder("Current State (erasure)\n");
+        stringBuilder.append("=============\n");
+        synchronized (liveChunkServers) {
+            for (LiveChunkServer server : liveChunkServers) {
+                stringBuilder.append(server.getServerAddress());
+                stringBuilder.append(":\n");
+                Set<String> fileNames = server.getFileNames();
+                for (String fileName : fileNames) {
+                    stringBuilder.append("  ");
+                    stringBuilder.append(fileName);
+                    stringBuilder.append(": ");
+                    List<Shard> shards = server.getShards(fileName);
+                    for (int i = 0; i < shards.size(); i++) {
+                        stringBuilder.append(shards.get(i).getSequence());
+                        stringBuilder.append("(");
+                        stringBuilder.append(shards.get(i).getFragment());
+                        stringBuilder.append(")");
+                        if (i != shards.size() - 1)
                             stringBuilder.append(", ");
                     }
                     stringBuilder.append("\n");

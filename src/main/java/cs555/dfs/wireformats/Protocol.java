@@ -25,4 +25,5 @@ public class Protocol {
     public static final int RETRIEVE_SHARD_RESPONSE = 321;
     public static final int FILE_LIST_REQUEST_ERASURE = 322;
     public static final int FILE_LIST_RESPONSE_ERASURE = 323;
+    public static final int SHARD_HEARTBEAT = 324;
 }

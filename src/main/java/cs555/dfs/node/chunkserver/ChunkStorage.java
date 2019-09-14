@@ -101,6 +101,10 @@ class ChunkStorage {
         byte[] fileData = storeShard.getFileData();
 
         shard.writeShard(fileData);
+
+        ShardHeartbeat shardHeartbeat = new ShardHeartbeat(server.getServerAddress(), server.getControllerTcpConnection().getLocalSocketAddress(),
+            Collections.singletonList(shard));
+        server.sendMessageToController(shardHeartbeat);
     }
 
     private Path generateWritePath(String fileName, int chunkSequence) {

@@ -143,6 +143,10 @@ public class ChunkServer implements Node {
         controllerTcpConnection.send(message.getBytes());
     }
 
+    public TcpConnection getControllerTcpConnection() {
+        return controllerTcpConnection;
+    }
+
     private class HeartbeatTimerTask extends TimerTask {
         private static final int MAJOR_HEARTBEAT_INTERVAL = 10;
         private final AtomicInteger counter = new AtomicInteger();

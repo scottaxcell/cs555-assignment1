@@ -56,4 +56,16 @@ public class Shard {
             ", path=" + path +
             '}';
     }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public int getSequence() {
+        return sequence;
+    }
+
+    public int getFragment() {
+        return fragment;
+    }
 }
