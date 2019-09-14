@@ -82,8 +82,34 @@ class ChunkStorage {
         tcpSender.send(forwardStoreChunk.getBytes());
     }
 
+    public void handleStoreShard(StoreShard storeShard) {
+        String fileName = storeShard.getFileName();
+        int sequence = storeShard.getSequence();
+        int fragment = storeShard.getFragment();
+        Path path = generateShardWritePath(fileName, sequence, fragment);
+
+        cs555.dfs.node.Shard shard = new cs555.dfs.node.Shard(fileName, sequence, fragment, path);
+        filesToShards.computeIfAbsent(fileName, fn -> new ArrayList<>());
+
+        List<cs555.dfs.node.Shard> shards = filesToShards.get(fileName);
+        if (!shards.contains(shard))
+            shards.add(shard);
+
+        int idx = shards.indexOf(shard);
+        shard = shards.get(idx);
+
+        byte[] fileData = storeShard.getFileData();
+
+        shard.writeShard(fileData);
+    }
+
     private Path generateWritePath(String fileName, int chunkSequence) {
         Path path = Paths.get(storageDir.toString(), fileName + "_chunk" + chunkSequence);
+        return path;
+    }
+
+    private Path generateShardWritePath(String fileName, int chunkSequence, int fragment) {
+        Path path = Paths.get(storageDir.toString(), fileName + "_chunk" + chunkSequence + "_fragment" + fragment);
         return path;
     }
 
@@ -146,8 +172,22 @@ class ChunkStorage {
             .orElse(null);
     }
 
+    private cs555.dfs.node.Shard getShard(String fileName, int sequence, int fragment) {
+        cs555.dfs.node.Shard finderShard = new cs555.dfs.node.Shard(fileName, sequence, fragment, generateShardWritePath(fileName, sequence, fragment));
+        return getShards().stream()
+            .filter(s -> s.equals(finderShard))
+            .findFirst()
+            .orElse(null);
+    }
+
     synchronized List<Chunk> getChunks() {
         return filesToChunks.values().stream()
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
+    }
+
+    synchronized List<cs555.dfs.node.Shard> getShards() {
+        return filesToShards.values().stream()
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
     }
@@ -179,26 +219,5 @@ class ChunkStorage {
             new cs555.dfs.wireformats.Chunk(fileName, sequence),
             bytes, Collections.emptyList());
         tcpSender.send(storeChunk.getBytes());
-    }
-
-    public void handleStoreShard(StoreShard storeShard) {
-        String fileName = storeShard.getFileName();
-        int sequence = storeShard.getSequence();
-        int fragment = storeShard.getFragment();
-        Path path = generateWritePath(fileName, sequence);
-
-        cs555.dfs.node.Shard shard = new cs555.dfs.node.Shard(fileName, sequence, fragment, path);
-        filesToShards.computeIfAbsent(fileName, fn -> new ArrayList<>());
-
-        List<cs555.dfs.node.Shard> shards = filesToShards.get(fileName);
-        if (!shards.contains(shard))
-            shards.add(shard);
-
-        int idx = shards.indexOf(shard);
-        shard = shards.get(idx);
-
-        byte[] fileData = storeShard.getFileData();
-
-        shard.writeShard(fileData);
     }
 }

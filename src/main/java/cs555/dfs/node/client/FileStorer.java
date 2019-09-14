@@ -4,7 +4,6 @@ import cs555.dfs.transport.TcpSender;
 import cs555.dfs.util.*;
 import cs555.dfs.wireformats.*;
 
-import javax.xml.crypto.Data;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,65 +57,6 @@ class FileStorer {
         sendNextStoreChunkRequest();
     }
 
-    private void sendNextStoreChunkRequest() {
-        synchronized (chunkDataList) {
-            if (!chunkDataList.isEmpty()) {
-                ChunkData chunkData = chunkDataList.get(0);
-                StoreChunkRequest request = new StoreChunkRequest(client.getServerAddress(),
-                    client.getControllerTcpConnection().getLocalSocketAddress(),
-                    new Chunk(chunkData.fileName, chunkData.sequence));
-                client.getControllerTcpConnection().send(request.getBytes());
-            }
-            else
-                setIsRunning(false);
-        }
-    }
-
-    private void sendNextStoreFragmentRequest() {
-        synchronized (shardDataList) {
-            if (!shardDataList.isEmpty()) {
-                ShardData shardData = shardDataList.get(0);
-                StoreShardRequest request = new StoreShardRequest(client.getServerAddress(),
-                    client.getControllerTcpConnection().getLocalSocketAddress(),
-                    new Shard(shardData.fileName, shardData.sequence, shardData.fragment));
-                client.getControllerTcpConnection().send(request.getBytes());
-            }
-        }
-    }
-
-    public void storeFile(Path path) {
-        setIsRunning(true);
-        synchronized (chunkDataList) {
-            chunkDataList.addAll(FileChunkifier.chunkifyFileToDataChunks(path));
-            if (!chunkDataList.isEmpty()) {
-                sendNextStoreChunkRequest();
-            }
-        }
-    }
-
-    public void storeFileErasure(Path path) {
-        setIsRunning(true);
-        synchronized (shardDataList) {
-            List<ChunkData> chunks = FileChunkifier.chunkifyFileToDataChunks(path);
-            for (ChunkData chunk : chunks) {
-                byte[][] encoded = ErasureEncoderDecoder.encode(chunk.getData());
-                int i = 0;
-                for (byte[] e : encoded)
-                    shardDataList.add(new ShardData(chunk.getFileName(), chunk.getSequence(), i++, e));
-            }
-            if (!shardDataList.isEmpty())
-                sendNextStoreFragmentRequest();
-        }
-    }
-
-    public void setIsRunning(boolean isRunning) {
-        this.isRunning.set(isRunning);
-    }
-
-    public boolean isRunning() {
-        return isRunning.get();
-    }
-
     public void handleStoreShardResponse(StoreShardResponse response) {
         String fileName = response.getFileName();
         int sequence = response.getChunkSequence();
@@ -145,6 +85,67 @@ class FileStorer {
             new Shard(fileName, shardData.sequence, shardData.fragment), shardData.data);
         tcpSender.send(storeShard.getBytes());
 
-        sendNextStoreChunkRequest();
+        sendNextStoreShardRequest();
+    }
+
+    private void sendNextStoreChunkRequest() {
+        synchronized (chunkDataList) {
+            if (!chunkDataList.isEmpty()) {
+                ChunkData chunkData = chunkDataList.get(0);
+                StoreChunkRequest request = new StoreChunkRequest(client.getServerAddress(),
+                    client.getControllerTcpConnection().getLocalSocketAddress(),
+                    new Chunk(chunkData.fileName, chunkData.sequence));
+                client.getControllerTcpConnection().send(request.getBytes());
+            }
+            else
+                setIsRunning(false);
+        }
+    }
+
+    private void sendNextStoreShardRequest() {
+        synchronized (shardDataList) {
+            if (!shardDataList.isEmpty()) {
+                ShardData shardData = shardDataList.get(0);
+                StoreShardRequest request = new StoreShardRequest(client.getServerAddress(),
+                    client.getControllerTcpConnection().getLocalSocketAddress(),
+                    new Shard(shardData.fileName, shardData.sequence, shardData.fragment));
+                client.getControllerTcpConnection().send(request.getBytes());
+            }
+            else
+                setIsRunning(false);
+        }
+    }
+
+    public void setIsRunning(boolean isRunning) {
+        this.isRunning.set(isRunning);
+    }
+
+    public void storeFile(Path path) {
+        setIsRunning(true);
+        synchronized (chunkDataList) {
+            chunkDataList.addAll(FileChunkifier.chunkifyFileToDataChunks(path));
+            if (!chunkDataList.isEmpty()) {
+                sendNextStoreChunkRequest();
+            }
+        }
+    }
+
+    public void storeFileErasure(Path path) {
+        setIsRunning(true);
+        synchronized (shardDataList) {
+            List<ChunkData> chunks = FileChunkifier.chunkifyFileToDataChunks(path);
+            for (ChunkData chunk : chunks) {
+                byte[][] encoded = ErasureEncoderDecoder.encode(chunk.getData());
+                int i = 0;
+                for (byte[] e : encoded)
+                    shardDataList.add(new ShardData(chunk.getFileName(), chunk.getSequence(), i++, e));
+            }
+            if (!shardDataList.isEmpty())
+                sendNextStoreShardRequest();
+        }
+    }
+
+    public boolean isRunning() {
+        return isRunning.get();
     }
 }

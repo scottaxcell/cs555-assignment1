@@ -64,7 +64,7 @@ public class Client implements Node {
             if (input.startsWith("sfe")) {
 //                Utils.out("file: \n");
 //                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/MobyDick.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.error("file does not exist: " + path);
@@ -72,11 +72,12 @@ public class Client implements Node {
                 }
                 storeFileErasure(path);
                 printProgressBar();
+                Utils.info("Stored (erasure) " + path);
             }
             else if (input.startsWith("rfe")) {
 //                Utils.out("file: \n");
 //                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/MobyDick.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.error("file does not exist: " + path);
@@ -89,10 +90,9 @@ public class Client implements Node {
                 listFilesErasure();
                 printProgressBar();
             }
-            if (input.startsWith("sf")) {
+            else if (input.startsWith("sf")) {
                 Utils.out("file: \n");
                 String fileName = scanner.next();
-//                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.error("file does not exist: " + path);
@@ -100,11 +100,11 @@ public class Client implements Node {
                 }
                 storeFile(path);
                 printProgressBar();
+                Utils.info("Stored " + path);
             }
             else if (input.startsWith("rf")) {
                 Utils.out("file: \n");
                 String fileName = scanner.next();
-//                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/bogus.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.error("file does not exist: " + path);
@@ -127,22 +127,15 @@ public class Client implements Node {
         }
     }
 
-    private void listFilesErasure() {
-
-    }
-
-    private void retrieveFileErasure(Path path) {
-
-    }
-
-    private void storeFileErasure(Path path) {
-        Utils.info("Storing (erasure) " + path + " ...", false);
-        fileStorer.storeFileErasure(path);
-    }
-
     private void listFiles() {
         fileLister.setIsRunning(true);
         FileListRequest request = new FileListRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress());
+        controllerTcpConnection.send(request.getBytes());
+    }
+
+    private void listFilesErasure() {
+        fileLister.setIsRunning(true);
+        FileListRequestErasure request = new FileListRequestErasure(getServerAddress(), controllerTcpConnection.getLocalSocketAddress());
         controllerTcpConnection.send(request.getBytes());
     }
 
@@ -176,12 +169,21 @@ public class Client implements Node {
         fileStorer.storeFile(path);
     }
 
+    private void storeFileErasure(Path path) {
+        Utils.info("Storing (erasure) " + path + " ...", false);
+        fileStorer.storeFileErasure(path);
+    }
+
     private void retrieveFile(Path path) {
         Utils.info("Retrieving " + path + " ...", false);
         fileReader.setIsRunning(true);
         fileReader.setFileName(path.getFileName().toString());
         RetrieveFileRequest request = new RetrieveFileRequest(getServerAddress(), controllerTcpConnection.getLocalSocketAddress(), Utils.getCanonicalPath(path));
         controllerTcpConnection.send(request.getBytes());
+    }
+
+    private void retrieveFileErasure(Path path) {
+        // todo
     }
 
     private static void printHelpAndExit() {
@@ -214,15 +216,13 @@ public class Client implements Node {
                 break;
             case Protocol.STORE_SHARD_RESPONSE:
                 handleStoreShardResponse(message);
+                break;
+            case Protocol.FILE_LIST_RESPONSE_ERASURE:
+                handleFileListResponseErasure(message);
+                break;
             default:
                 throw new RuntimeException(String.format("received an unknown message with protocol %d", protocol));
         }
-    }
-
-    private void handleStoreShardResponse(Message message) {
-        StoreShardResponse response = (StoreShardResponse) message;
-        Utils.debug("received: " + response);
-        fileStorer.handleStoreShardResponse(response);
     }
 
     private void handleFileListResponse(Message message) {
@@ -231,11 +231,22 @@ public class Client implements Node {
         fileLister.handleFileListResponse(response);
     }
 
+    private void handleFileListResponseErasure(Message message) {
+        FileListResponseErasure response = (FileListResponseErasure) message;
+        Utils.debug("received: " + response);
+        fileLister.handleFileListResponseErasure(response);
+    }
+
     private void handleStoreChunkResponse(Message message) {
         StoreChunkResponse response = (StoreChunkResponse) message;
         Utils.debug("received: " + response);
         fileStorer.handleStoreChunkResponse(response);
+    }
 
+    private void handleStoreShardResponse(Message message) {
+        StoreShardResponse response = (StoreShardResponse) message;
+        Utils.debug("received: " + response);
+        fileStorer.handleStoreShardResponse(response);
     }
 
     private void handleRetrieveFileResponse(Message message) {

@@ -30,7 +30,7 @@ public class ShardData {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ChunkData that = (ChunkData) o;
+        ShardData that = (ShardData) o;
         return sequence == that.sequence;
     }
 
