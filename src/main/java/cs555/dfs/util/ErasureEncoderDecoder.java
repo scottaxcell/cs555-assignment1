@@ -70,7 +70,7 @@ public class ErasureEncoderDecoder {
         return shards;
     }
 
-    private static byte[] decode(byte[][] encoded) {
+    public static byte[] decode(byte[][] encoded) {
         // Read in any of the shards that are present.
         // (There should be checking here to make sure the input
         // shards are the same size, but there isn't.)

@@ -1,10 +1,7 @@
 package cs555.dfs.node.client;
 
 import cs555.dfs.transport.TcpSender;
-import cs555.dfs.util.ChunkData;
-import cs555.dfs.util.FileChunkifier;
-import cs555.dfs.util.ShardData;
-import cs555.dfs.util.Utils;
+import cs555.dfs.util.*;
 import cs555.dfs.wireformats.*;
 import cs555.dfs.wireformats.erasure.*;
 
@@ -12,9 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -36,6 +31,32 @@ class FileReader {
         this.client = client;
     }
 
+    public void setIsRunning(boolean isRunning) {
+        this.isRunning.set(isRunning);
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    void handleRetrieveChunkResponse(RetrieveChunkResponse response) {
+        String fileName = response.getFileName();
+        int sequence = response.getSequence();
+        byte[] fileData = response.getFileData();
+        ChunkData chunkData = new ChunkData(fileName, sequence, fileData);
+
+        synchronized (chunkDataList) {
+            chunkDataList.add(chunkData);
+            if (numReceivedChunks.incrementAndGet() == numExpectedChunks.get()) {
+                Utils.debug("got all " + numReceivedChunks.get() + " expected chunks");
+                writeFile();
+                return;
+            }
+        }
+
+        sendNextRetrieveChunkRequest();
+    }
+
     void handleRetrieveShardResponse(RetrieveShardResponse response) {
         String fileName = response.getFileName();
         int sequence = response.getSequence();
@@ -44,13 +65,9 @@ class FileReader {
         ShardData shardData = new ShardData(fileName, sequence, fragment, fileData);
 
         synchronized (shardDataList) {
-            if (!shardDataList.contains(shardData)) {
-                shardDataList.add(shardData);
-            }
-            Utils.debug("received: " + numReceivedShards.get());
-            Utils.debug("expected: " + numExpectedShards.get());
+            shardDataList.add(shardData);
             if (numReceivedShards.incrementAndGet() == numExpectedShards.get()) {
-                Utils.debug("got all " + numReceivedShards.get() + " shards");
+                Utils.debug("got all " + numReceivedShards.get() + " expected shards");
                 numReceivedShards.set(0);
                 writeFileErasure();
                 return;
@@ -60,30 +77,105 @@ class FileReader {
         sendNextRetrieveShardRequest();
     }
 
+    private void writeFile() {
+        synchronized (chunkDataList) {
+            if (chunkDataList.isEmpty())
+                return;
+            List<byte[]> list = chunkDataList.stream()
+                .sorted(Comparator.comparingInt(ChunkData::getSequence))
+                .map(ChunkData::getData)
+                .collect(Collectors.toList());
+
+            chunkDataList.clear();
+            numExpectedChunks.set(0);
+            numReceivedChunks.set(0);
+
+            byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
+            Path path = Paths.get(String.format("./%s", fileName));
+            try {
+                setIsRunning(false);
+                Files.createDirectories(path.getParent());
+                Files.write(path, bytes);
+                Utils.sleep(1500);
+                Utils.info("File written to " + path.toAbsolutePath());
+                setFileName("");
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private void writeFileErasure() {
-        setIsRunning(false);
-        // todo
-//        synchronized (chunkDataList) {
-//            if (chunkDataList.isEmpty())
-//                return;
-//            List<byte[]> list = chunkDataList.stream()
-//                .sorted(Comparator.comparingInt(ChunkData::getSequence))
-//                .map(ChunkData::getData)
-//                .collect(Collectors.toList());
-//            byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
-//            Path path = Paths.get(String.format("./%s", fileName));
-//            try {
-//                setIsRunning(false);
-//                Files.createDirectories(path.getParent());
-//                Files.write(path, bytes);
-//                Utils.sleep(1500);
-//                Utils.info("File written to " + path.toAbsolutePath());
-//                setFileName("");
-//            }
-//            catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
+        Map<Integer, List<ShardData>> sequenceToShardData = new HashMap<>();
+        List<ChunkData> chunkDatas = new ArrayList<>();
+
+        synchronized (shardDataList) {
+            if (shardDataList.isEmpty())
+                return;
+
+            for (ShardData shardData : shardDataList)
+                sequenceToShardData.computeIfAbsent(shardData.getSequence(), l -> new ArrayList<>()).add(shardData);
+
+            for (Map.Entry<Integer, List<ShardData>> entry : sequenceToShardData.entrySet()) {
+                Integer sequence = entry.getKey();
+                List<ShardData> shardDatas = entry.getValue();
+                List<byte[]> chunkShards = shardDatas.stream()
+                    .sorted(Comparator.comparingInt(ShardData::getFragment))
+                    .map(ShardData::getData)
+                    .collect(Collectors.toList());
+
+                byte[] decoded = ErasureEncoderDecoder.decode(chunkShards.toArray(new byte[chunkShards.size()][]));
+                ChunkData chunkData = new ChunkData(fileName, sequence, decoded);
+                chunkDatas.add(chunkData);
+            }
+
+            List<byte[]> byteList = chunkDatas.stream()
+                .sorted(Comparator.comparingInt(ChunkData::getSequence))
+                .map(ChunkData::getData)
+                .collect(Collectors.toList());
+
+            shardDataList.clear();
+            numExpectedShards.set(0);
+            numReceivedShards.set(0);
+
+            byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(byteList);
+            Path path = Paths.get(String.format("./%s", fileName));
+            try {
+                setIsRunning(false);
+                Files.createDirectories(path.getParent());
+                Files.write(path, bytes);
+                Utils.sleep(1500);
+                Utils.info("File written to " + path.toAbsolutePath());
+                setFileName("");
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void sendNextRetrieveChunkRequest() {
+        synchronized (chunkLocations) {
+            if (!chunkLocations.isEmpty()) {
+                ChunkLocation chunkLocation = chunkLocations.get(0);
+                String serverAddress = chunkLocation.getServerAddress();
+
+                TcpSender tcpSender = TcpSender.of(serverAddress);
+                if (tcpSender == null) {
+                    Utils.error("tcpServer is null");
+                    return;
+                }
+
+                RetrieveChunkRequest request = new RetrieveChunkRequest(client.getServerAddress(),
+                    tcpSender.getLocalSocketAddress(),
+                    new cs555.dfs.wireformats.Chunk(chunkLocation.getFileName(),
+                        chunkLocation.getSequence()));
+                tcpSender.send(request.getBytes());
+
+                chunkLocations.remove(chunkLocation);
+            }
+        }
     }
 
     private void sendNextRetrieveShardRequest() {
@@ -106,84 +198,6 @@ class FileReader {
                 tcpSender.send(request.getBytes());
 
                 shardLocations.remove(shardLocation);
-            }
-        }
-    }
-
-    void handleRetrieveChunkResponse(RetrieveChunkResponse response) {
-        String fileName = response.getFileName();
-        int sequence = response.getSequence();
-        byte[] fileData = response.getFileData();
-        ChunkData chunkData = new ChunkData(fileName, sequence, fileData);
-
-        synchronized (chunkDataList) {
-            if (!chunkDataList.contains(chunkData)) {
-                chunkDataList.add(chunkData);
-            }
-            Utils.debug("received: " + numReceivedChunks.get());
-            Utils.debug("expected: " + numExpectedChunks.get());
-            if (numReceivedChunks.incrementAndGet() == numExpectedChunks.get()) {
-                Utils.debug("got all " + numReceivedChunks.get() + " chunks");
-                numReceivedChunks.set(0);
-                writeFile();
-                return;
-            }
-        }
-
-        sendNextRetrieveChunkRequest();
-    }
-
-    private void writeFile() {
-        synchronized (chunkDataList) {
-            if (chunkDataList.isEmpty())
-                return;
-            List<byte[]> list = chunkDataList.stream()
-                .sorted(Comparator.comparingInt(ChunkData::getSequence))
-                .map(ChunkData::getData)
-                .collect(Collectors.toList());
-            byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
-            Path path = Paths.get(String.format("./%s", fileName));
-            try {
-                setIsRunning(false);
-                Files.createDirectories(path.getParent());
-                Files.write(path, bytes);
-                Utils.sleep(1500);
-                Utils.info("File written to " + path.toAbsolutePath());
-                setFileName("");
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public void setIsRunning(boolean isRunning) {
-        this.isRunning.set(isRunning);
-    }
-
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
-
-    private void sendNextRetrieveChunkRequest() {
-        synchronized (chunkLocations) {
-            if (!chunkLocations.isEmpty()) {
-                ChunkLocation chunkLocation = chunkLocations.get(0);
-                String serverAddress = chunkLocation.getServerAddress();
-
-                TcpSender tcpSender = TcpSender.of(serverAddress);
-                if (tcpSender == null) {
-                    Utils.error("tcpServer is null");
-                    return;
-                }
-
-                RetrieveChunkRequest request = new RetrieveChunkRequest(client.getServerAddress(),
-                    tcpSender.getLocalSocketAddress(),
-                    new cs555.dfs.wireformats.Chunk(chunkLocation.getFileName(),
-                        chunkLocation.getSequence()));
-                tcpSender.send(request.getBytes());
-
-                chunkLocations.remove(chunkLocation);
             }
         }
     }

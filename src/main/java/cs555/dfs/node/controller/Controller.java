@@ -215,7 +215,7 @@ public class Controller implements Node {
 
     private void printState() {
         StringBuilder stringBuilder = new StringBuilder("Current State\n");
-        stringBuilder.append("=============\n");
+        stringBuilder.append("===================\n");
         synchronized (liveChunkServers) {
             for (LiveChunkServer server : liveChunkServers) {
                 stringBuilder.append(server.getServerAddress());
@@ -263,13 +263,15 @@ public class Controller implements Node {
                     stringBuilder.append(fileName);
                     stringBuilder.append(": ");
                     List<Shard> shards = server.getShards(fileName);
-                    for (int i = 0; i < shards.size(); i++) {
-                        stringBuilder.append(shards.get(i).getSequence());
-                        stringBuilder.append("(");
-                        stringBuilder.append(shards.get(i).getFragment());
-                        stringBuilder.append(")");
-                        if (i != shards.size() - 1)
-                            stringBuilder.append(", ");
+                    if (!shards.isEmpty()) {
+                        for (int i = 0; i < shards.size(); i++) {
+                            stringBuilder.append(shards.get(i).getSequence());
+                            stringBuilder.append("(");
+                            stringBuilder.append(shards.get(i).getFragment());
+                            stringBuilder.append(")");
+                            if (i != shards.size() - 1)
+                                stringBuilder.append(", ");
+                        }
                     }
                     stringBuilder.append("\n");
                 }
@@ -302,10 +304,11 @@ public class Controller implements Node {
             .map(LiveChunkServer::getServerAddress)
             .collect(Collectors.toList());
 
-        if (validServerAddresses.size() != REPLICATION_LEVEL) {
-            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers, found " + validServerAddresses.size());
-            return;
-        }
+        // todo turn on
+//        if (validServerAddresses.size() != REPLICATION_LEVEL) {
+//            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers, found " + validServerAddresses.size());
+//            return;
+//        }
 
         String sourceAddress = request.getSourceAddress();
         TcpConnection tcpConnection = connections.get(sourceAddress);

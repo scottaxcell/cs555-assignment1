@@ -22,16 +22,18 @@ public class ShardData {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(sequence);
-    }
-
-    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ShardData that = (ShardData) o;
-        return sequence == that.sequence;
+        ShardData shardData = (ShardData) o;
+        return sequence == shardData.sequence &&
+            fragment == shardData.fragment &&
+            Objects.equals(fileName, shardData.fileName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(fileName, sequence, fragment);
     }
 
     public String getFileName() {

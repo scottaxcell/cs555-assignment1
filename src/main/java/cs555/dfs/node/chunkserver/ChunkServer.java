@@ -152,7 +152,7 @@ public class ChunkServer implements Node {
         return Utils.getServerAddress(tcpServer);
     }
 
-    void sendMessageToController(Message message) {
+    public void sendMessageToController(Message message) {
         controllerTcpConnection.send(message.getBytes());
     }
 

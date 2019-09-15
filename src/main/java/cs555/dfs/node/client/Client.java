@@ -65,7 +65,7 @@ public class Client implements Node {
             if (input.startsWith("sfe")) {
 //                Utils.out("file: \n");
 //                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/MobyDick.txt";
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/files/MobyDick.txt";
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.error("file does not exist: " + path);
@@ -78,12 +78,8 @@ public class Client implements Node {
             else if (input.startsWith("rfe")) {
 //                Utils.out("file: \n");
 //                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/MobyDick.txt";
+                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/files/MobyDick.txt";
                 Path path = Paths.get(fileName);
-                if (!path.toFile().exists()) {
-                    Utils.error("file does not exist: " + path);
-                    continue;
-                }
                 retrieveFileErasure(path);
                 printProgressBar();
             }
@@ -107,10 +103,6 @@ public class Client implements Node {
                 Utils.out("file: \n");
                 String fileName = scanner.next();
                 Path path = Paths.get(fileName);
-                if (!path.toFile().exists()) {
-                    Utils.error("file does not exist: " + path);
-                    continue;
-                }
                 retrieveFile(path);
                 printProgressBar();
             }

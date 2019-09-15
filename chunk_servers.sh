@@ -1,9 +1,9 @@
 #!/bin/env bash
 #
-#CLASSES_DIR=$(pwd)/out/production/classes
+CURRENT_WORKING_DIR=$(pwd)
 CLASSES_DIR=$(pwd)/build/classes/java/main
 
-START_CHUNK_SERVER="cd $CLASSES_DIR; java -cp . cs555.dfs.node.chunkserver.ChunkServer 1328 tokyo 50321"
+START_CHUNK_SERVER="cd $CURRENT_WORKING_DIR; java -cp $CLASSES_DIR cs555.dfs.node.chunkserver.ChunkServer 1328 tokyo 50321"
 
 for chunk_server in $(cat chunk_servers.txt)
 do

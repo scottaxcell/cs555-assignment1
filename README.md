@@ -10,6 +10,8 @@ Building a distributed, replicated, and fault tolerant path system
 * ~~list available files from client, select one and prompt for dir to write to~~
 * ensure all classes are thread safe
 * ~~remove tcp connection from connections when it dies~~
+* do not change dir when running executables, just point to build dir
+* 
 
 #### Code cleanup
 * ~~standardize serialization and deserialization api to be shared among wireformats~~

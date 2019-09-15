@@ -24,8 +24,8 @@ class ChunkStorage {
     private final ChunkServer server;
     private final Path storageDir;
     private final List<Chunk> newChunks = new ArrayList<>();
-    private Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
-    private Map<String, List<cs555.dfs.node.Shard>> filesToShards = new ConcurrentHashMap<>();
+    private final Map<String, List<Chunk>> filesToChunks = new ConcurrentHashMap<>();
+    private final Map<String, List<Shard>> filesToShards = new ConcurrentHashMap<>();
 
     ChunkStorage(ChunkServer server, String serverName) {
         this.server = server;
@@ -98,15 +98,16 @@ class ChunkStorage {
         int fragment = storeShard.getFragment();
         Path path = generateShardWritePath(fileName, sequence, fragment);
 
-        cs555.dfs.node.Shard shard = new cs555.dfs.node.Shard(fileName, sequence, fragment, path);
-        filesToShards.computeIfAbsent(fileName, fn -> new ArrayList<>());
-
-        List<cs555.dfs.node.Shard> shards = filesToShards.get(fileName);
-        if (!shards.contains(shard))
-            shards.add(shard);
-
-        int idx = shards.indexOf(shard);
-        shard = shards.get(idx);
+        Shard shard = new Shard(fileName, sequence, fragment, path);
+        filesToShards.computeIfAbsent(fileName, l -> new ArrayList<>()).add(shard);
+        synchronized (filesToShards) {
+            filesToShards.values().stream()
+                .filter(s -> Objects.isNull(s))
+                .findAny()
+                .ifPresent(s -> {
+                    Utils.out("got a null dude");
+                });
+        }
 
         byte[] fileData = storeShard.getFileData();
 
@@ -211,18 +212,23 @@ class ChunkStorage {
         tcpSender.send(response.getBytes());
     }
 
-    private cs555.dfs.node.Shard getShard(String fileName, int sequence, int fragment) {
-        cs555.dfs.node.Shard finderShard = new cs555.dfs.node.Shard(fileName, sequence, fragment, generateShardWritePath(fileName, sequence, fragment));
-        return getShards().stream()
-            .filter(s -> s.equals(finderShard))
-            .findFirst()
-            .orElse(null);
-    }
-
-    synchronized List<cs555.dfs.node.Shard> getShards() {
-        return filesToShards.values().stream()
-            .flatMap(Collection::stream)
-            .collect(Collectors.toList());
+    private Shard getShard(String fileName, int sequence, int fragment) {
+        Shard finderShard = new Shard(fileName, sequence, fragment, generateShardWritePath(fileName, sequence, fragment));
+        synchronized (filesToShards) {
+            Collection<List<Shard>> values = filesToShards.values();
+            for (List<Shard> shards : values) {
+                for (Shard shard : shards) {
+                    if (shard.equals(finderShard))
+                        return shard;
+                }
+            }
+        }
+        return null;
+//            return (Shard) filesToShards.values().stream()
+//                .filter(s -> Objects.nonNull(s) && s.equals(finderShard))
+//                .findFirst()
+//                .orElse(null);
+//        }
     }
 
     synchronized List<Chunk> getNewChunks() {

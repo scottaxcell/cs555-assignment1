@@ -108,10 +108,10 @@ public class FileChunkifier {
         for (byte[] b : byteArrayList)
             numBytes += b.length;
         byte[] bytes = new byte[numBytes];
-        int chunkSequence = 0;
+        int bytesCopied = 0;
         for (byte[] b : byteArrayList) {
-            System.arraycopy(b, 0, bytes, chunkSequence * CHUNK_SIZE, b.length);
-            chunkSequence++;
+            System.arraycopy(b, 0, bytes, bytesCopied, b.length);
+            bytesCopied += b.length;
         }
         return bytes;
     }
