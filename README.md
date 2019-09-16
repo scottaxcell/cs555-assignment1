@@ -13,7 +13,7 @@ Building a distributed, replicated, and fault tolerant path system
 * ensure all classes are thread safe
 * store shards on random servers, not just one which is happening now
 * cleanup up status printouts
-* remove progress bar from list look up
+* ~~remove progress bar from list look up~~
 * erasure printout not printing any shards
 
 #### Code cleanup

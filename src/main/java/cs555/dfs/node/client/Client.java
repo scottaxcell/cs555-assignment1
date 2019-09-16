@@ -85,7 +85,6 @@ public class Client implements Node {
             }
             else if (input.startsWith("lfe")) {
                 listFilesErasure();
-                printProgressBar();
             }
             else if (input.startsWith("sf")) {
                 Utils.out("file: \n");
@@ -108,7 +107,6 @@ public class Client implements Node {
             }
             else if (input.startsWith("lf")) {
                 listFiles();
-                printProgressBar();
             }
             else if (input.startsWith("h")) {
                 printMenu();

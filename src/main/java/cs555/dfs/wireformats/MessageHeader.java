@@ -69,6 +69,7 @@ public class MessageHeader implements Message {
         return "MessageHeader{" +
             "protocol=" + protocol +
             ", serverAddress='" + serverAddress + '\'' +
+            ", sourceAddress='" + sourceAddress + '\'' +
             '}';
     }
 }
