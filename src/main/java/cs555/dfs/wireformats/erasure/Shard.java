@@ -3,6 +3,7 @@ package cs555.dfs.wireformats.erasure;
 import cs555.dfs.wireformats.WireformatUtils;
 
 import java.io.*;
+import java.util.Objects;
 
 public class Shard {
     private String fileName;
@@ -70,6 +71,21 @@ public class Shard {
             ", sequence=" + sequence +
             ", fragment=" + fragment +
             '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Shard shard = (Shard) o;
+        return sequence == shard.sequence &&
+            fragment == shard.fragment &&
+            Objects.equals(fileName, shard.fileName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(fileName, sequence, fragment);
     }
 
     public String getFileName() {

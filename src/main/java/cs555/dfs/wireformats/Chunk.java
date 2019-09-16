@@ -1,6 +1,7 @@
 package cs555.dfs.wireformats;
 
 import java.io.*;
+import java.util.Objects;
 
 public class Chunk {
     private String fileName;
@@ -62,6 +63,20 @@ public class Chunk {
             "fileName='" + fileName + '\'' +
             ", sequence=" + sequence +
             '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Chunk chunk = (Chunk) o;
+        return sequence == chunk.sequence &&
+            Objects.equals(fileName, chunk.fileName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(fileName, sequence);
     }
 
     public String getFileName() {

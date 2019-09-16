@@ -146,14 +146,14 @@ public class Client implements Node {
 
     private static void printMenu() {
         Utils.out("***************************\n");
-        Utils.out("h  -- print menu\n");
-        Utils.out("sf -- store file\n");
+        Utils.out("h   -- print menu\n");
+        Utils.out("sf  -- store file\n");
         Utils.out("sfe -- store file (erasure)\n");
-        Utils.out("lf -- list files\n");
+        Utils.out("lf  -- list files\n");
         Utils.out("lfe -- list files (erasure)\n");
-        Utils.out("rf -- read file\n");
+        Utils.out("rf  -- read file\n");
         Utils.out("rfe -- read file (erasure)\n");
-        Utils.out("e  -- exit\n");
+        Utils.out("e   -- exit\n");
         Utils.out("***************************\n");
     }
 

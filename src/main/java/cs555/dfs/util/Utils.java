@@ -13,7 +13,7 @@ import java.util.Random;
 
 public class Utils {
     public static final int HASH_CODE_BYTE_SIZE = 40;
-    private static boolean debug = false;
+    private static boolean debug = true;
 
     public static void out(Object o) {
         System.out.print(o);

@@ -304,11 +304,10 @@ public class Controller implements Node {
             .map(LiveChunkServer::getServerAddress)
             .collect(Collectors.toList());
 
-        // todo turn on
-//        if (validServerAddresses.size() != REPLICATION_LEVEL) {
-//            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers, found " + validServerAddresses.size());
-//            return;
-//        }
+        if (validServerAddresses.size() != REPLICATION_LEVEL) {
+            Utils.error("failed to find " + REPLICATION_LEVEL + " live chunk servers, found " + validServerAddresses.size());
+            return;
+        }
 
         String sourceAddress = request.getSourceAddress();
         TcpConnection tcpConnection = connections.get(sourceAddress);
@@ -357,6 +356,8 @@ public class Controller implements Node {
 
         if (chunkLocations.isEmpty())
             return;
+
+        Utils.debug("sending " + chunkLocations.size() + " chunks");
 
         String sourceAddress = request.getSourceAddress();
         TcpConnection tcpConnection = connections.get(sourceAddress);
@@ -470,12 +471,13 @@ public class Controller implements Node {
                 Utils.debug("sending replicate chunk to " + serversWithChunk.get(0).getServerAddress() + " for " + replicationServer.getServerAddress());
 
                 TcpSender tcpSender = TcpSender.of(serversWithChunk.get(0).getServerAddress());
+                if (tcpSender != null) {
+                    ReplicateChunk replicateChunk = new ReplicateChunk(getServerAddress(),
+                        tcpSender.getLocalSocketAddress(),
+                        new cs555.dfs.wireformats.Chunk(fileName, sequence), replicationServer.getServerAddress());
 
-                ReplicateChunk replicateChunk = new ReplicateChunk(getServerAddress(),
-                    tcpSender.getLocalSocketAddress(),
-                    new cs555.dfs.wireformats.Chunk(fileName, sequence), replicationServer.getServerAddress());
-
-                tcpSender.send(replicateChunk.getBytes());
+                    tcpSender.send(replicateChunk.getBytes());
+                }
             }
         }
     }

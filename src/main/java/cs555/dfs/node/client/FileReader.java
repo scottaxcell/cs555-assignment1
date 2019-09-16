@@ -49,6 +49,7 @@ class FileReader {
             chunkDataList.add(chunkData);
             if (numReceivedChunks.incrementAndGet() == numExpectedChunks.get()) {
                 Utils.debug("got all " + numReceivedChunks.get() + " expected chunks");
+                numReceivedChunks.set(0);
                 writeFile();
                 return;
             }
@@ -86,10 +87,6 @@ class FileReader {
                 .map(ChunkData::getData)
                 .collect(Collectors.toList());
 
-            chunkDataList.clear();
-            numExpectedChunks.set(0);
-            numReceivedChunks.set(0);
-
             byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(list);
             Path path = Paths.get(String.format("./%s", fileName));
             try {
@@ -103,6 +100,10 @@ class FileReader {
             catch (IOException e) {
                 e.printStackTrace();
             }
+
+            chunkDataList.clear();
+            numExpectedChunks.set(0);
+            numReceivedChunks.set(0);
         }
     }
 
@@ -135,10 +136,6 @@ class FileReader {
                 .map(ChunkData::getData)
                 .collect(Collectors.toList());
 
-            shardDataList.clear();
-            numExpectedShards.set(0);
-            numReceivedShards.set(0);
-
             byte[] bytes = FileChunkifier.convertByteArrayListToByteArray(byteList);
             Path path = Paths.get(String.format("./%s", fileName));
             try {
@@ -152,6 +149,10 @@ class FileReader {
             catch (IOException e) {
                 e.printStackTrace();
             }
+
+            shardDataList.clear();
+            numExpectedShards.set(0);
+            numReceivedShards.set(0);
         }
     }
 

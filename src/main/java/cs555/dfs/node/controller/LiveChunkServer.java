@@ -3,6 +3,7 @@ package cs555.dfs.node.controller;
 import cs555.dfs.node.Chunk;
 import cs555.dfs.node.Shard;
 import cs555.dfs.transport.TcpConnection;
+import cs555.dfs.util.Utils;
 import cs555.dfs.wireformats.Heartbeat;
 import cs555.dfs.wireformats.Message;
 import cs555.dfs.wireformats.erasure.ShardHeartbeat;
@@ -47,6 +48,7 @@ public class LiveChunkServer {
         List<cs555.dfs.node.Shard> shards = heartbeat.getShards();
         for (cs555.dfs.node.Shard shard : shards)
             filesToShards.computeIfAbsent(shard.getFileName(), s -> new ArrayList<>()).add(shard);
+        Utils.out(filesToShards);
     }
 
     public long getUsableSpace() {

@@ -27,7 +27,6 @@ public class TcpSender {
             return new TcpSender(socket);
         }
         catch (IOException e) {
-            e.printStackTrace();
             return null;
         }
     }

@@ -34,9 +34,8 @@ class ChunkStorage {
 
     synchronized int getTotalNumberOfChunks() {
         int numChunks = 0;
-        for (List<Chunk> chunks : filesToChunks.values()) {
+        for (List<Chunk> chunks : filesToChunks.values())
             numChunks += chunks.size();
-        }
         return numChunks;
     }
 
@@ -99,8 +98,8 @@ class ChunkStorage {
         Path path = generateShardWritePath(fileName, sequence, fragment);
 
         Shard shard = new Shard(fileName, sequence, fragment, path);
-        filesToShards.computeIfAbsent(fileName, l -> new ArrayList<>()).add(shard);
         synchronized (filesToShards) {
+            filesToShards.computeIfAbsent(fileName, l -> new ArrayList<>()).add(shard);
             filesToShards.values().stream()
                 .filter(s -> Objects.isNull(s))
                 .findAny()
@@ -215,25 +214,18 @@ class ChunkStorage {
     private Shard getShard(String fileName, int sequence, int fragment) {
         Shard finderShard = new Shard(fileName, sequence, fragment, generateShardWritePath(fileName, sequence, fragment));
         synchronized (filesToShards) {
-            Collection<List<Shard>> values = filesToShards.values();
-            for (List<Shard> shards : values) {
-                for (Shard shard : shards) {
-                    if (shard.equals(finderShard))
-                        return shard;
-                }
-            }
+            return filesToShards.values().stream()
+                .flatMap(Collection::stream)
+                .filter(s -> s.equals(finderShard))
+                .findFirst()
+                .orElse(null);
         }
-        return null;
-//            return (Shard) filesToShards.values().stream()
-//                .filter(s -> Objects.nonNull(s) && s.equals(finderShard))
-//                .findFirst()
-//                .orElse(null);
-//        }
     }
 
     synchronized List<Chunk> getNewChunks() {
         return newChunks;
     }
+
 
     public void handleReplicateChunk(ReplicateChunk replicateChunk) {
         String fileName = replicateChunk.getFileName();

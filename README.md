@@ -8,10 +8,13 @@ Building a distributed, replicated, and fault tolerant path system
 * ~~add temp testing command line handling for easier testing~~
 * ~~figure out storing of already connected remote hosts, is this needed?~~
 * ~~list available files from client, select one and prompt for dir to write to~~
-* ensure all classes are thread safe
 * ~~remove tcp connection from connections when it dies~~
-* do not change dir when running executables, just point to build dir
-* 
+* ~~do not change dir when running executables, just point to build dir~~
+* ensure all classes are thread safe
+* store shards on random servers, not just one which is happening now
+* cleanup up status printouts
+* remove progress bar from list look up
+* erasure printout not printing any shards
 
 #### Code cleanup
 * ~~standardize serialization and deserialization api to be shared among wireformats~~
