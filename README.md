@@ -3,7 +3,8 @@ Building a distributed, replicated, and fault tolerant path system
 
 ## TODO
 ### Miscellaneous
-* detect server going down and cleanup shards
+* chunk replication should acknowledge the version level instead of incrementing on every single write
+* try to reproduce stack, kill chunk server with shards
 DEBUG: got all 169 expected shards
 Exception in thread "Thread-170" java.lang.ArrayIndexOutOfBoundsException: 8
         at cs555.dfs.util.ErasureEncoderDecoder.decode(ErasureEncoderDecoder.java:87)
@@ -15,7 +16,7 @@ Exception in thread "Thread-170" java.lang.ArrayIndexOutOfBoundsException: 8
         at java.lang.Thread.run(Thread.java:748)
 
 * choose random server based on disk space percentage
-* cleanup up status printouts
+* ~~cleanup up status printouts~~
 * ensure all classes are thread safe
 * ~~store shards on random servers, not just one which is happening now~~
 * ~~erasure printout not printing any shards~~
@@ -44,7 +45,6 @@ Exception in thread "Thread-170" java.lang.ArrayIndexOutOfBoundsException: 8
 * ~~all heartbeats -- total number of chunks and free-space~~
 * ~~report path corruption to controller~~
 * ~~add error detection by hashing on reads and writes~~
-* chunk replication should acknowledge the version level instead of incrementing on every single write
 
 ### Client
 * ~~ask controller for chunk servers to write chunk to~~

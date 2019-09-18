@@ -63,9 +63,8 @@ public class Client implements Node {
 
             input = scanner.next();
             if (input.startsWith("sfe")) {
-//                Utils.out("file: \n");
-//                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/files/MobyDick.txt";
+                Utils.out("file:\n");
+                String fileName = scanner.next();
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
                     Utils.error("file does not exist: " + path);
@@ -76,9 +75,8 @@ public class Client implements Node {
                 Utils.info("Stored (erasure) " + path);
             }
             else if (input.startsWith("rfe")) {
-//                Utils.out("file: \n");
-//                String fileName = scanner.next();
-                String fileName = "/s/chopin/a/grad/sgaxcell/cs555-assignment1/files/MobyDick.txt";
+                Utils.out("file:\n");
+                String fileName = scanner.next();
                 Path path = Paths.get(fileName);
                 retrieveFileErasure(path);
                 printProgressBar();
@@ -87,7 +85,7 @@ public class Client implements Node {
                 listFilesErasure();
             }
             else if (input.startsWith("sf")) {
-                Utils.out("file: \n");
+                Utils.out("file:\n");
                 String fileName = scanner.next();
                 Path path = Paths.get(fileName);
                 if (!path.toFile().exists()) {
@@ -99,7 +97,7 @@ public class Client implements Node {
                 Utils.info("Stored " + path);
             }
             else if (input.startsWith("rf")) {
-                Utils.out("file: \n");
+                Utils.out("file:\n");
                 String fileName = scanner.next();
                 Path path = Paths.get(fileName);
                 retrieveFile(path);
@@ -145,7 +143,7 @@ public class Client implements Node {
 
     private static void printMenu() {
         Utils.out("***************************\n");
-        Utils.out("h   -- print menu\n");
+        Utils.out("h   -- print this menu\n");
         Utils.out("sf  -- store file\n");
         Utils.out("sfe -- store file (erasure)\n");
         Utils.out("lf  -- list files\n");
