@@ -136,6 +136,7 @@ public class Client implements Node {
                 Thread.sleep(500);
                 Utils.out(".");
             }
+            Utils.out("\n");
         }
         catch (InterruptedException e) {
             e.printStackTrace();

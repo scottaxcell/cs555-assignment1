@@ -48,7 +48,6 @@ public class LiveChunkServer {
         List<cs555.dfs.node.Shard> shards = heartbeat.getShards();
         for (cs555.dfs.node.Shard shard : shards)
             filesToShards.computeIfAbsent(shard.getFileName(), s -> new ArrayList<>()).add(shard);
-        Utils.out(filesToShards);
     }
 
     public long getUsableSpace() {

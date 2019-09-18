@@ -3,10 +3,22 @@ Building a distributed, replicated, and fault tolerant path system
 
 ## TODO
 ### Miscellaneous
+* detect server going down and cleanup shards
+DEBUG: got all 169 expected shards
+Exception in thread "Thread-170" java.lang.ArrayIndexOutOfBoundsException: 8
+        at cs555.dfs.util.ErasureEncoderDecoder.decode(ErasureEncoderDecoder.java:87)
+        at cs555.dfs.node.client.FileReader.writeFileErasure(FileReader.java:129)
+        at cs555.dfs.node.client.FileReader.handleRetrieveShardResponse(FileReader.java:73)
+        at cs555.dfs.node.client.Client.handleRetrieveShardResponse(Client.java:276)
+        at cs555.dfs.node.client.Client.onMessage(Client.java:224)
+        at cs555.dfs.transport.TcpReceiver.run(TcpReceiver.java:39)
+        at java.lang.Thread.run(Thread.java:748)
+
+* choose random server based on disk space percentage
+* cleanup up status printouts
 * ensure all classes are thread safe
 * ~~store shards on random servers, not just one which is happening now~~
-* cleanup up status printouts
-* erasure printout not printing any shards
+* ~~erasure printout not printing any shards~~
 * ~~can i remove the socket from the messages and create constructors that take serialized data~~
 * ~~create run script to launch controller, chunk servers, and client for easier testing~~
 * ~~add temp testing command line handling for easier testing~~

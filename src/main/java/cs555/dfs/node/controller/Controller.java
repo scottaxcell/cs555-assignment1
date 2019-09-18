@@ -197,7 +197,7 @@ public class Controller implements Node {
                 .noneMatch(lcs -> lcs.getServerAddress().equals(serverAddress));
             if (noneMatch) {
                 liveChunkServers.add(new LiveChunkServer(connections.get(sourceAddress), serverAddress));
-                Utils.debug("registering chunk server: " + serverAddress);
+                Utils.info("Registered chunk server @ " + serverAddress);
             }
         }
     }
@@ -531,6 +531,7 @@ public class Controller implements Node {
             }
 
             for (LiveChunkServer deadServer : deadServers) {
+                Utils.info("Chunk server @ " + deadServer.getServerAddress() + " died");
                 liveChunkServers.remove(deadServer);
                 connections.remove(deadServer.getTcpConnection().getRemoteSocketAddress());
                 processDeadChunkServer(deadServer);

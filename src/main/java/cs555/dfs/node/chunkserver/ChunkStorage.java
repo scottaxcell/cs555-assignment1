@@ -66,6 +66,8 @@ class ChunkStorage {
 
         chunk.writeChunk(chunkData);
 
+        Utils.info("Stored chunk " + chunk.getFileName() + " " + chunk.getSequence());
+
         List<String> nextServers = storeChunk.getNextServers();
         if (nextServers.isEmpty())
             return;
@@ -100,12 +102,7 @@ class ChunkStorage {
         Shard shard = new Shard(fileName, sequence, fragment, path);
         synchronized (filesToShards) {
             filesToShards.computeIfAbsent(fileName, l -> new ArrayList<>()).add(shard);
-            filesToShards.values().stream()
-                .filter(s -> Objects.isNull(s))
-                .findAny()
-                .ifPresent(s -> {
-                    Utils.out("got a null dude");
-                });
+            Utils.info("Stored shard " + shard.getFileName() + " " + shard.getSequence() + "(" + shard.getFragment() + ")");
         }
 
         byte[] fileData = storeShard.getFileData();
