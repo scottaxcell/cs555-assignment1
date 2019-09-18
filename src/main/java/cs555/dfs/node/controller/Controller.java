@@ -11,6 +11,7 @@ import cs555.dfs.wireformats.*;
 import cs555.dfs.wireformats.erasure.*;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -226,11 +227,43 @@ public class Controller implements Node {
                     stringBuilder.append("  ");
                     stringBuilder.append(fileName);
                     stringBuilder.append(": ");
-                    List<Chunk> chunks = server.getChunks(fileName);
-                    for (int i = 0; i < chunks.size(); i++) {
-                        stringBuilder.append(chunks.get(i).getSequence());
-                        if (i != chunks.size() - 1)
+                    List<Chunk> sortedChunks = new ArrayList<>(server.getChunks(fileName));
+                    Collections.sort(sortedChunks, Comparator.comparingInt(Chunk::getSequence));
+                    for (int i = 0; i < sortedChunks.size(); i++) {
+                        stringBuilder.append(sortedChunks.get(i).getSequence());
+                        if (i != sortedChunks.size() - 1)
                             stringBuilder.append(", ");
+                    }
+                    stringBuilder.append("\n");
+                }
+            }
+        }
+        Utils.info(stringBuilder.toString());
+    }
+
+    private void printShardState() {
+        StringBuilder stringBuilder = new StringBuilder("Current State (erasure)\n");
+        stringBuilder.append("=============\n");
+        synchronized (liveChunkServers) {
+            for (LiveChunkServer server : liveChunkServers) {
+                stringBuilder.append(server.getServerAddress());
+                stringBuilder.append(":\n");
+                Set<String> fileNames = server.getShardFileNames();
+                for (String fileName : fileNames) {
+                    stringBuilder.append("  ");
+                    stringBuilder.append(fileName);
+                    stringBuilder.append(": ");
+                    List<Shard> sortedShards = new ArrayList<>(server.getShards(fileName));
+                    Collections.sort(sortedShards, Comparator.comparingInt(Shard::getSequence).thenComparing(Shard::getFragment));
+                    if (!sortedShards.isEmpty()) {
+                        for (int i = 0; i < sortedShards.size(); i++) {
+                            stringBuilder.append(sortedShards.get(i).getSequence());
+                            stringBuilder.append("(");
+                            stringBuilder.append(sortedShards.get(i).getFragment());
+                            stringBuilder.append(")");
+                            if (i != sortedShards.size() - 1)
+                                stringBuilder.append(", ");
+                        }
                     }
                     stringBuilder.append("\n");
                 }
@@ -249,36 +282,6 @@ public class Controller implements Node {
                 .ifPresent(lcs -> lcs.shardHeartbeatUpdate(heartbeat));
         }
         printShardState();
-    }
-
-    private void printShardState() {
-        StringBuilder stringBuilder = new StringBuilder("Current State (erasure)\n");
-        stringBuilder.append("=============\n");
-        synchronized (liveChunkServers) {
-            for (LiveChunkServer server : liveChunkServers) {
-                stringBuilder.append(server.getServerAddress());
-                stringBuilder.append(":\n");
-                Set<String> fileNames = server.getFileNames();
-                for (String fileName : fileNames) {
-                    stringBuilder.append("  ");
-                    stringBuilder.append(fileName);
-                    stringBuilder.append(": ");
-                    List<Shard> shards = server.getShards(fileName);
-                    if (!shards.isEmpty()) {
-                        for (int i = 0; i < shards.size(); i++) {
-                            stringBuilder.append(shards.get(i).getSequence());
-                            stringBuilder.append("(");
-                            stringBuilder.append(shards.get(i).getFragment());
-                            stringBuilder.append(")");
-                            if (i != shards.size() - 1)
-                                stringBuilder.append(", ");
-                        }
-                    }
-                    stringBuilder.append("\n");
-                }
-            }
-        }
-        Utils.info(stringBuilder.toString());
     }
 
     private void handleMajorHeartbeat(Message message) {

@@ -142,6 +142,10 @@ public class LiveChunkServer {
         return filesToChunks.keySet();
     }
 
+    public Set<String> getShardFileNames() {
+        return filesToShards.keySet();
+    }
+
     public boolean containsShard(String fileName, int sequence, int fragment) {
         List<Shard> shards = filesToShards.get(fileName);
         if (shards == null)
