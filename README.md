@@ -3,6 +3,10 @@ Building a distributed, replicated, and fault tolerant path system
 
 ## TODO
 ### Miscellaneous
+* ensure all classes are thread safe
+* ~~store shards on random servers, not just one which is happening now~~
+* cleanup up status printouts
+* erasure printout not printing any shards
 * ~~can i remove the socket from the messages and create constructors that take serialized data~~
 * ~~create run script to launch controller, chunk servers, and client for easier testing~~
 * ~~add temp testing command line handling for easier testing~~
@@ -10,11 +14,7 @@ Building a distributed, replicated, and fault tolerant path system
 * ~~list available files from client, select one and prompt for dir to write to~~
 * ~~remove tcp connection from connections when it dies~~
 * ~~do not change dir when running executables, just point to build dir~~
-* ensure all classes are thread safe
-* store shards on random servers, not just one which is happening now
-* cleanup up status printouts
 * ~~remove progress bar from list look up~~
-* erasure printout not printing any shards
 
 #### Code cleanup
 * ~~standardize serialization and deserialization api to be shared among wireformats~~
@@ -32,8 +32,6 @@ Building a distributed, replicated, and fault tolerant path system
 * ~~all heartbeats -- total number of chunks and free-space~~
 * ~~report path corruption to controller~~
 * ~~add error detection by hashing on reads and writes~~
-* write metadata to header of file data being written per chunk ?
-* refresh state by reading from disk on initialization ?
 * chunk replication should acknowledge the version level instead of incrementing on every single write
 
 ### Client
@@ -41,7 +39,7 @@ Building a distributed, replicated, and fault tolerant path system
 * ~~chunkify path~~
 * ~~send chunk to first chunk server -- append next chunk servers~~
 * ~~read in path from command line~~
-* reed solomonize chunks
+* ~~reed solomonize chunks~~
 
 ## Notes
 * the client reads the entire path into memory, could improve by streaming path a chunk at a time

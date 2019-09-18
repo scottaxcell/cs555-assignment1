@@ -4,3 +4,17 @@ montpelier
 denver
 raleigh
 sacramento
+harrisburg
+honolulu
+lansing
+little-rock
+trenton
+richmond
+phoenix
+columbia
+columbus-oh
+concord
+charleston
+saint-paul
+salt-lake-city
+des-moines

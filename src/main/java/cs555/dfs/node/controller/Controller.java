@@ -13,6 +13,7 @@ import cs555.dfs.wireformats.erasure.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 public class Controller implements Node {
@@ -119,9 +120,9 @@ public class Controller implements Node {
         }
 
         StoreShardResponse response = new StoreShardResponse(getServerAddress(),
-            tcpConnection.getLocalSocketAddress(),
-            new cs555.dfs.wireformats.erasure.Shard(fileName, sequence, fragment),
-            validServerAddresses.get(0));
+                tcpConnection.getLocalSocketAddress(),
+                new cs555.dfs.wireformats.erasure.Shard(fileName, sequence, fragment),
+                validServerAddresses.get(ThreadLocalRandom.current().nextInt(validServerAddresses.size())));
 
         tcpConnection.send(response.getBytes());
     }
@@ -131,7 +132,7 @@ public class Controller implements Node {
 
         synchronized (liveChunkServers) {
             servers = liveChunkServers.stream()
-                .filter(lcs -> !lcs.containsShard(shard.getFileName(), shard.getSequence(), shard.getFragment()))
+                .filter(lcs -> !lcs.containsShardOfChunk(shard.getFileName(), shard.getSequence()))
                 .sorted(Comparator.comparingLong(LiveChunkServer::getUsableSpace).reversed())
                 .collect(Collectors.toList());
         }

@@ -157,4 +157,16 @@ public class LiveChunkServer {
     public List<Shard> getShards(String fileName) {
         return filesToShards.get(fileName);
     }
+
+    public boolean containsShardOfChunk(String fileName, int sequence) {
+        List<Shard> shards = filesToShards.get(fileName);
+        if (shards == null)
+            return false;
+
+        for (Shard shard : shards)
+            if (shard.getSequence() == sequence)
+                return true;
+
+        return false;
+    }
 }
