@@ -6,10 +6,14 @@ import java.util.Objects;
 public class Chunk {
     private String fileName;
     private int sequence;
+    private int version;
+    private int size;
 
-    public Chunk(String fileName, int sequence) {
+    public Chunk(String fileName, int sequence, int version, int size) {
         this.fileName = fileName;
         this.sequence = sequence;
+        this.version = version;
+        this.size = size;
     }
 
     public Chunk(byte[] bytes) {
@@ -19,6 +23,8 @@ public class Chunk {
 
             fileName = WireformatUtils.deserializeString(dataInputStream);
             sequence = WireformatUtils.deserializeInt(dataInputStream);
+            version = WireformatUtils.deserializeInt(dataInputStream);
+            size = WireformatUtils.deserializeInt(dataInputStream);
 
             byteArrayInputStream.close();
             dataInputStream.close();
@@ -31,7 +37,9 @@ public class Chunk {
     public static Chunk deserialize(DataInputStream dataInputStream) {
         String fileName = WireformatUtils.deserializeString(dataInputStream);
         int sequence = WireformatUtils.deserializeInt(dataInputStream);
-        return new Chunk(fileName, sequence);
+        int version = WireformatUtils.deserializeInt(dataInputStream);
+        int size = WireformatUtils.deserializeInt(dataInputStream);
+        return new Chunk(fileName, sequence, version, size);
     }
 
     public byte[] getBytes() {
@@ -41,6 +49,7 @@ public class Chunk {
 
             WireformatUtils.serializeString(dataOutputStream, fileName);
             WireformatUtils.serializeInt(dataOutputStream, sequence);
+            WireformatUtils.serializeInt(dataOutputStream, version);
 
             dataOutputStream.flush();
 
@@ -57,11 +66,14 @@ public class Chunk {
         }
     }
 
+
     @Override
     public String toString() {
         return "Chunk{" +
             "fileName='" + fileName + '\'' +
             ", sequence=" + sequence +
+            ", version=" + version +
+            ", size=" + size +
             '}';
     }
 
@@ -87,8 +99,18 @@ public class Chunk {
         return sequence;
     }
 
+    public int getVersion() {
+        return version;
+    }
+
     public void serialize(DataOutputStream dataOutputStream) {
         WireformatUtils.serializeString(dataOutputStream, fileName);
         WireformatUtils.serializeInt(dataOutputStream, sequence);
+        WireformatUtils.serializeInt(dataOutputStream, version);
+        WireformatUtils.serializeInt(dataOutputStream, size);
+    }
+
+    public int getSize() {
+        return size;
     }
 }

@@ -148,5 +148,11 @@ public class FileChunkifier {
 
         return slices;
     }
+
+    public static byte[] truncateBytes(byte[] bytes, int size) {
+        byte[] truncatedBytes = new byte[size];
+        System.arraycopy(bytes, 0, truncatedBytes, 0, size);
+        return truncatedBytes;
+    }
 }
 

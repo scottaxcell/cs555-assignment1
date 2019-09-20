@@ -29,11 +29,13 @@ class FileStorer {
 
     public void handleStoreChunkResponse(StoreChunkResponse response) {
         String fileName = response.getFileName();
-        int chunkSequence = response.getChunkSequence();
+        int sequence = response.getChunkSequence();
+        int version = response.getVersion();
+
         ChunkData chunkData;
 
         synchronized (chunkDataList) {
-            ChunkData finderChunk = new ChunkData(fileName, chunkSequence);
+            ChunkData finderChunk = new ChunkData(fileName, sequence);
             int idx = chunkDataList.indexOf(finderChunk);
             if (idx == -1) {
                 Utils.error("chunkDataList not found");
@@ -58,7 +60,7 @@ class FileStorer {
             .skip(1).collect(Collectors.toList());
 
         StoreChunk storeChunk = new StoreChunk(client.getServerAddress(), tcpSender.getLocalSocketAddress(),
-            new Chunk(fileName, chunkData.sequence), chunkData.data, nextServers);
+            new Chunk(fileName, chunkData.sequence, version, chunkData.data.length), chunkData.data, nextServers);
         tcpSender.send(storeChunk.getBytes());
 
         sendNextStoreChunkRequest();
@@ -101,7 +103,7 @@ class FileStorer {
                 ChunkData chunkData = chunkDataList.get(0);
                 StoreChunkRequest request = new StoreChunkRequest(client.getServerAddress(),
                     client.getControllerTcpConnection().getLocalSocketAddress(),
-                    new Chunk(chunkData.fileName, chunkData.sequence));
+                    new Chunk(chunkData.fileName, chunkData.sequence, -1, chunkData.data.length));
                 client.getControllerTcpConnection().send(request.getBytes());
             }
             else

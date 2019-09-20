@@ -11,7 +11,6 @@ import cs555.dfs.wireformats.*;
 import cs555.dfs.wireformats.erasure.*;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -121,9 +120,9 @@ public class Controller implements Node {
         }
 
         StoreShardResponse response = new StoreShardResponse(getServerAddress(),
-                tcpConnection.getLocalSocketAddress(),
-                new cs555.dfs.wireformats.erasure.Shard(fileName, sequence, fragment),
-                validServerAddresses.get(ThreadLocalRandom.current().nextInt(validServerAddresses.size())));
+            tcpConnection.getLocalSocketAddress(),
+            new cs555.dfs.wireformats.erasure.Shard(fileName, sequence, fragment),
+            validServerAddresses.get(ThreadLocalRandom.current().nextInt(validServerAddresses.size())));
 
         tcpConnection.send(response.getBytes());
     }
@@ -204,7 +203,6 @@ public class Controller implements Node {
 
     private void handleMinorHeartbeat(Message message) {
         Heartbeat heartbeat = (Heartbeat) message;
-        Utils.debug("received: " + heartbeat);
         synchronized (liveChunkServers) {
             liveChunkServers.stream()
                 .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
@@ -241,6 +239,17 @@ public class Controller implements Node {
         Utils.info(stringBuilder.toString());
     }
 
+    private void handleShardHeartbeat(Message message) {
+        ShardHeartbeat heartbeat = (ShardHeartbeat) message;
+        synchronized (liveChunkServers) {
+            liveChunkServers.stream()
+                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
+                .findFirst()
+                .ifPresent(lcs -> lcs.shardHeartbeatUpdate(heartbeat));
+        }
+        printShardState();
+    }
+
     private void printShardState() {
         StringBuilder stringBuilder = new StringBuilder("Current State (erasure)\n");
         stringBuilder.append("=============\n");
@@ -272,21 +281,8 @@ public class Controller implements Node {
         Utils.info(stringBuilder.toString());
     }
 
-    private void handleShardHeartbeat(Message message) {
-        ShardHeartbeat heartbeat = (ShardHeartbeat) message;
-        Utils.debug("received: " + heartbeat);
-        synchronized (liveChunkServers) {
-            liveChunkServers.stream()
-                .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
-                .findFirst()
-                .ifPresent(lcs -> lcs.shardHeartbeatUpdate(heartbeat));
-        }
-        printShardState();
-    }
-
     private void handleMajorHeartbeat(Message message) {
         Heartbeat heartbeat = (Heartbeat) message;
-        Utils.debug("received: " + heartbeat);
         synchronized (liveChunkServers) {
             liveChunkServers.stream()
                 .filter(lcs -> lcs.getServerAddress().equals(heartbeat.getServerAddress()))
@@ -301,6 +297,7 @@ public class Controller implements Node {
         Utils.debug("received: " + request);
         String fileName = request.getFileName();
         int sequence = request.getSequence();
+        int size = request.getSize();
 
         List<LiveChunkServer> serversWithoutChunk = findServersWithoutChunk(fileName, sequence);
 
@@ -321,7 +318,7 @@ public class Controller implements Node {
         }
 
         StoreChunkResponse response = new StoreChunkResponse(getServerAddress(), tcpConnection.getLocalSocketAddress(),
-            new cs555.dfs.wireformats.Chunk(fileName, sequence), validServerAddresses);
+            new cs555.dfs.wireformats.Chunk(fileName, sequence, -1, size), validServerAddresses);
         tcpConnection.send(response.getBytes());
     }
 
@@ -351,7 +348,7 @@ public class Controller implements Node {
                 if (chunks == null)
                     continue;
                 for (Chunk c : chunks) {
-                    ChunkLocation chunkLocation = new ChunkLocation(new cs555.dfs.wireformats.Chunk(fileName, c.getSequence()), lcs.getServerAddress());
+                    ChunkLocation chunkLocation = new ChunkLocation(new cs555.dfs.wireformats.Chunk(fileName, c.getSequence(), -1, -1), lcs.getServerAddress());
                     if (!chunkLocations.contains(chunkLocation))
                         chunkLocations.add(chunkLocation);
                 }
@@ -413,6 +410,7 @@ public class Controller implements Node {
 
         String fileName = corruptChunk.getFileName();
         int sequence = corruptChunk.getSequence();
+        List<Integer> corruptSlices = corruptChunk.getCorruptSlices();
         String corruptChunkServerAddress = corruptChunk.getServerAddress();
 
         synchronized (liveChunkServers) {
@@ -425,7 +423,9 @@ public class Controller implements Node {
                     TcpSender tcpSender = TcpSender.of(lcs.getServerAddress());
                     ReplicateChunk replicateChunk = new ReplicateChunk(getServerAddress(),
                         tcpSender.getLocalSocketAddress(),
-                        new cs555.dfs.wireformats.Chunk(fileName, sequence), corruptChunkServerAddress);
+                        new cs555.dfs.wireformats.Chunk(fileName, sequence, chunk.getVersion(), chunk.getSize()),
+                        corruptSlices, corruptChunkServerAddress);
+                    Utils.debug("sending: " + replicateChunk);
                     tcpSender.send(replicateChunk.getBytes());
                     break;
                 }
@@ -478,7 +478,9 @@ public class Controller implements Node {
                 if (tcpSender != null) {
                     ReplicateChunk replicateChunk = new ReplicateChunk(getServerAddress(),
                         tcpSender.getLocalSocketAddress(),
-                        new cs555.dfs.wireformats.Chunk(fileName, sequence), replicationServer.getServerAddress());
+                        new cs555.dfs.wireformats.Chunk(fileName, sequence, chunk.getVersion(), chunk.getSize()),
+                        Collections.emptyList(),
+                        replicationServer.getServerAddress());
 
                     tcpSender.send(replicateChunk.getBytes());
                 }
@@ -524,7 +526,6 @@ public class Controller implements Node {
                         tcpConnection.sendNoCatch(aliveHeartbeat.getBytes());
                     }
                     catch (IOException e) {
-                        Utils.debug("chunk server died: " + lcs.getServerAddress());
                         deadServers.add(lcs);
                     }
                 }

@@ -91,4 +91,8 @@ public class StoreChunkResponse implements Message {
     public List<String> getChunkServerAddresses() {
         return chunkServerAddresses;
     }
+
+    public int getVersion() {
+        return chunk.getVersion();
+    }
 }

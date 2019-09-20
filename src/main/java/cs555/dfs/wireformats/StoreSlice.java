@@ -1,23 +1,23 @@
 package cs555.dfs.wireformats;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
 
-public class CorruptChunk implements Message {
+public class StoreSlice implements Message {
     private MessageHeader messageHeader;
     private Chunk chunk;
-    private List<Integer> corruptSlices = new ArrayList<>();
+    private int slice;
+    private byte[] sliceBytes;
 
-    public CorruptChunk(String serverAddress, String sourceAddress, Chunk chunk, List<Integer> corruptSlices) {
+    public StoreSlice(String serverAddress, String sourceAddress, Chunk chunk, int slice, byte[] sliceBytes) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.chunk = chunk;
-        this.corruptSlices = corruptSlices;
+        this.slice = slice;
+        this.sliceBytes = sliceBytes;
     }
 
     @Override
     public int getProtocol() {
-        return Protocol.CORRUPT_CHUNK;
+        return Protocol.STORE_SLICE;
     }
 
     @Override
@@ -28,9 +28,8 @@ public class CorruptChunk implements Message {
 
             messageHeader.serialize(dataOutputStream);
             chunk.serialize(dataOutputStream);
-            WireformatUtils.serializeInt(dataOutputStream, corruptSlices.size());
-            for (Integer corruptSlice : corruptSlices)
-                WireformatUtils.serializeInt(dataOutputStream, corruptSlice);
+            WireformatUtils.serializeInt(dataOutputStream, slice);
+            WireformatUtils.serializeBytes(dataOutputStream, sliceBytes);
 
             dataOutputStream.flush();
 
@@ -47,16 +46,15 @@ public class CorruptChunk implements Message {
         }
     }
 
-    public CorruptChunk(byte[] bytes) {
+    public StoreSlice(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(byteArrayInputStream));
 
             messageHeader = MessageHeader.deserialize(dataInputStream);
             chunk = Chunk.deserialize(dataInputStream);
-            int numCorruptSlices = WireformatUtils.deserializeInt(dataInputStream);
-            for (int i = 0; i < numCorruptSlices; i++)
-                corruptSlices.add(WireformatUtils.deserializeInt(dataInputStream));
+            slice = WireformatUtils.deserializeInt(dataInputStream);
+            sliceBytes = WireformatUtils.deserializeBytes(dataInputStream);
 
             byteArrayInputStream.close();
             dataInputStream.close();
@@ -68,10 +66,11 @@ public class CorruptChunk implements Message {
 
     @Override
     public String toString() {
-        return "CorruptChunk{" +
+        return "StoreSlice{" +
             "messageHeader=" + messageHeader +
             ", chunk=" + chunk +
-            ", corruptSlices=" + corruptSlices +
+            ", slice=" + slice +
+            ", sliceBytes.length=" + sliceBytes.length +
             '}';
     }
 
@@ -83,11 +82,19 @@ public class CorruptChunk implements Message {
         return chunk.getSequence();
     }
 
-    public String getServerAddress() {
-        return messageHeader.getServerAddress();
+    public int getSlice() {
+        return slice;
     }
 
-    public List<Integer> getCorruptSlices() {
-        return corruptSlices;
+    public byte[] getFileData() {
+        return sliceBytes;
+    }
+
+    public int getVersion() {
+        return chunk.getVersion();
+    }
+
+    public int getSize() {
+        return chunk.getSize();
     }
 }

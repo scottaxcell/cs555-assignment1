@@ -91,11 +91,19 @@ public class StoreChunk implements Message {
         return chunk.getSequence();
     }
 
+    public int getVersion() {
+        return chunk.getVersion();
+    }
+
     public byte[] getFileData() {
         return fileData;
     }
 
     public List<String> getNextServers() {
         return nextServers;
+    }
+
+    public int getSize() {
+        return chunk.getSize();
     }
 }

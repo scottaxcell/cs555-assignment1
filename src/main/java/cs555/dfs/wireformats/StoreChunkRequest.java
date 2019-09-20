@@ -75,4 +75,8 @@ public class StoreChunkRequest implements Message {
     public String getSourceAddress() {
         return messageHeader.getSourceAddress();
     }
+
+    public int getSize() {
+        return chunk.getSize();
+    }
 }

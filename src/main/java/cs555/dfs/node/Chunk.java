@@ -14,12 +14,14 @@ public class Chunk {
     private final int sequence;
     private Path path;
     private int version;
+    private int size;
     private Instant timeStamp;
     private List<String> checksums;
 
-    public Chunk(String fileName, int sequence, Path path) {
+    public Chunk(String fileName, int sequence, int size, Path path) {
         this.fileName = fileName;
         this.sequence = sequence;
+        this.size = size;
         this.path = path;
     }
 
@@ -36,10 +38,9 @@ public class Chunk {
 
     public void writeChunk(byte[] bytes) {
         try {
-            Utils.debug("writing " + path);
+            Utils.debug("writing " + this);
             Files.createDirectories(path.getParent());
             Files.write(path, bytes);
-            incrementVersion();
             updateTimestamp();
         }
         catch (IOException e) {
@@ -112,7 +113,19 @@ public class Chunk {
         this.checksums = checksums;
     }
 
+    public void setChecksum(int slice, String checksum) {
+        this.checksums.set(slice, checksum);
+    }
+
     public List<String> getChecksums() {
         return checksums;
+    }
+
+    public void setVersion(int version) {
+        this.version = version;
+    }
+
+    public int getSize() {
+        return size;
     }
 }

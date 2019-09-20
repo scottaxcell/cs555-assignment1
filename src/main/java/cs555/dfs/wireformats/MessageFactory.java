@@ -22,6 +22,8 @@ public class MessageFactory {
                 return new StoreChunkResponse(data);
             case Protocol.STORE_CHUNK:
                 return new StoreChunk(data);
+            case Protocol.STORE_SLICE:
+                return new StoreSlice(data);
             case Protocol.MINOR_HEARTBEAT:
                 return new Heartbeat(data);
             case Protocol.MAJOR_HEARTBEAT:

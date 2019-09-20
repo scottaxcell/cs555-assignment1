@@ -171,7 +171,7 @@ class FileReader {
                 RetrieveChunkRequest request = new RetrieveChunkRequest(client.getServerAddress(),
                     tcpSender.getLocalSocketAddress(),
                     new cs555.dfs.wireformats.Chunk(chunkLocation.getFileName(),
-                        chunkLocation.getSequence()));
+                        chunkLocation.getSequence(), -1, -1));
                 tcpSender.send(request.getBytes());
 
                 chunkLocations.remove(chunkLocation);
@@ -237,7 +237,7 @@ class FileReader {
 
             RetrieveChunkRequest request = new RetrieveChunkRequest(client.getServerAddress(),
                 tcpSender.getLocalSocketAddress(),
-                new Chunk(fileName, sequence));
+                new Chunk(fileName, sequence, -1, -1));
             tcpSender.send(request.getBytes());
 
             chunkLocations.remove(chunkLocation);

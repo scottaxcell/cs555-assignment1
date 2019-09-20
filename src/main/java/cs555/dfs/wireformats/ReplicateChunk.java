@@ -1,15 +1,19 @@
 package cs555.dfs.wireformats;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ReplicateChunk implements Message {
     private MessageHeader messageHeader;
     private Chunk chunk;
+    private List<Integer> corruptSlices = new ArrayList<>();
     private String destinationAddress;
 
-    public ReplicateChunk(String serverAddress, String sourceAddress, Chunk chunk, String destinationAddress) {
+    public ReplicateChunk(String serverAddress, String sourceAddress, Chunk chunk, List<Integer> corruptSlices, String destinationAddress) {
         this.messageHeader = new MessageHeader(getProtocol(), serverAddress, sourceAddress);
         this.chunk = chunk;
+        this.corruptSlices = corruptSlices;
         this.destinationAddress = destinationAddress;
     }
 
@@ -27,6 +31,9 @@ public class ReplicateChunk implements Message {
             messageHeader.serialize(dataOutputStream);
             chunk.serialize(dataOutputStream);
             WireformatUtils.serializeString(dataOutputStream, destinationAddress);
+            WireformatUtils.serializeInt(dataOutputStream, corruptSlices.size());
+            for (Integer corruptSlice : corruptSlices)
+                WireformatUtils.serializeInt(dataOutputStream, corruptSlice);
 
             dataOutputStream.flush();
 
@@ -51,6 +58,9 @@ public class ReplicateChunk implements Message {
             messageHeader = MessageHeader.deserialize(dataInputStream);
             chunk = Chunk.deserialize(dataInputStream);
             destinationAddress = WireformatUtils.deserializeString(dataInputStream);
+            int numCorruptSlices = WireformatUtils.deserializeInt(dataInputStream);
+            for (int i = 0; i < numCorruptSlices; i++)
+                corruptSlices.add(WireformatUtils.deserializeInt(dataInputStream));
 
             byteArrayInputStream.close();
             dataInputStream.close();
@@ -65,6 +75,7 @@ public class ReplicateChunk implements Message {
         return "ReplicateChunk{" +
             "messageHeader=" + messageHeader +
             ", chunk=" + chunk +
+            ", corruptSlices=" + corruptSlices +
             ", destinationAddress='" + destinationAddress + '\'' +
             '}';
     }
@@ -83,5 +94,9 @@ public class ReplicateChunk implements Message {
 
     public String getDestinationAddress() {
         return destinationAddress;
+    }
+
+    public List<Integer> getCorruptSlices() {
+        return corruptSlices;
     }
 }

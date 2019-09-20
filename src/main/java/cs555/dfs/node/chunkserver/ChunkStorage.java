@@ -40,30 +40,38 @@ class ChunkStorage {
     }
 
     public void handleStoreChunk(StoreChunk storeChunk) {
-
         String fileName = storeChunk.getFileName();
         int sequence = storeChunk.getSequence();
+        int version = storeChunk.getVersion();
+        int size = storeChunk.getSize();
         Path path = generateWritePath(fileName, sequence);
 
-        Chunk chunk = new Chunk(fileName, sequence, path);
-        filesToChunks.computeIfAbsent(fileName, fn -> new ArrayList<>());
+        Chunk chunk = new Chunk(fileName, sequence, size, path);
 
-        List<Chunk> chunks = filesToChunks.get(fileName);
-        if (!chunks.contains(chunk)) {
-            synchronized (newChunks) {
-                Utils.debug("adding new chunk");
-                newChunks.add(chunk);
+        synchronized (filesToChunks) {
+            filesToChunks.computeIfAbsent(fileName, fn -> new ArrayList<>());
+
+            List<Chunk> chunks = filesToChunks.get(fileName);
+            if (!chunks.contains(chunk)) {
+                synchronized (newChunks) {
+                    Utils.debug("adding new chunk");
+                    newChunks.add(chunk);
+                }
+                chunks.add(chunk);
             }
-            chunks.add(chunk);
+            int idx = chunks.indexOf(chunk);
+            chunk = chunks.get(idx);
         }
-        int idx = chunks.indexOf(chunk);
-        chunk = chunks.get(idx);
 
         byte[] chunkData = storeChunk.getFileData();
 
         List<String> checksums = FileChunkifier.createSliceChecksums(chunkData);
         chunk.setChecksum(checksums);
 
+        if (version == -1) // regular store chunk flow
+            version = chunk.getVersion() + 1;
+
+        chunk.setVersion(version);
         chunk.writeChunk(chunkData);
 
         Utils.info("Stored chunk " + chunk.getFileName() + " " + chunk.getSequence());
@@ -83,7 +91,7 @@ class ChunkStorage {
 
         StoreChunk forwardStoreChunk = new StoreChunk(server.getServerAddress(),
             tcpSender.getLocalSocketAddress(),
-            new cs555.dfs.wireformats.Chunk(fileName, sequence),
+            new cs555.dfs.wireformats.Chunk(fileName, sequence, version, size),
             chunkData, nextNextServers);
         tcpSender.send(forwardStoreChunk.getBytes());
     }
@@ -145,7 +153,7 @@ class ChunkStorage {
         if (!path.toFile().exists()) {
             for (int i = 0; i < 8; i++)
                 corruptSlices.add(i);
-            sendCorruptChunkMessage(new cs555.dfs.wireformats.Chunk(fileName, sequence), corruptSlices, tcpSender);
+            sendCorruptChunkMessage(new cs555.dfs.wireformats.Chunk(fileName, sequence, chunk.getVersion(), -1), corruptSlices, tcpSender);
         }
 
         byte[] bytes = chunk.readChunk();
@@ -155,11 +163,11 @@ class ChunkStorage {
         if (corruptSlices.isEmpty()) {
             RetrieveChunkResponse response = new RetrieveChunkResponse(server.getServerAddress(),
                 tcpSender.getLocalSocketAddress(),
-                new cs555.dfs.wireformats.Chunk(fileName, sequence), bytes);
+                new cs555.dfs.wireformats.Chunk(fileName, sequence, chunk.getVersion(), -1), bytes);
             tcpSender.send(response.getBytes());
         }
         else
-            sendCorruptChunkMessage(new cs555.dfs.wireformats.Chunk(fileName, sequence), corruptSlices, tcpSender);
+            sendCorruptChunkMessage(new cs555.dfs.wireformats.Chunk(fileName, sequence, chunk.getVersion(), -1), corruptSlices, tcpSender);
     }
 
     private void sendCorruptChunkMessage(cs555.dfs.wireformats.Chunk chunk, List<Integer> corruptSlices, TcpSender tcpSender) {
@@ -172,7 +180,7 @@ class ChunkStorage {
     }
 
     private Chunk getChunk(String fileName, int sequence) {
-        Chunk finderChunk = new Chunk(fileName, sequence, generateWritePath(fileName, sequence));
+        Chunk finderChunk = new Chunk(fileName, sequence, -1, generateWritePath(fileName, sequence));
         return getChunks().stream()
             .filter(c -> c.equals(finderChunk))
             .findFirst()
@@ -227,6 +235,7 @@ class ChunkStorage {
     public void handleReplicateChunk(ReplicateChunk replicateChunk) {
         String fileName = replicateChunk.getFileName();
         int sequence = replicateChunk.getSequence();
+        List<Integer> corruptSlices = replicateChunk.getCorruptSlices();
         String corruptChunkServerAddress = replicateChunk.getDestinationAddress();
 
         Chunk chunk = getChunk(fileName, sequence);
@@ -236,16 +245,55 @@ class ChunkStorage {
         }
 
         byte[] bytes = chunk.readChunk();
-        List<Integer> corruptSlices = new ArrayList<>();
         List<String> sliceChecksums = FileChunkifier.createSliceChecksums(bytes);
-        Utils.compareChecksums(chunk.getChecksums(), sliceChecksums, corruptSlices);
+        Utils.compareChecksums(chunk.getChecksums(), sliceChecksums, new ArrayList<>());
+        // todo send corrupt chunk message if any corrupt on this server too
 
         TcpSender tcpSender = TcpSender.of(corruptChunkServerAddress);
 
-        StoreChunk storeChunk = new StoreChunk(server.getServerAddress(),
-            tcpSender.getLocalSocketAddress(),
-            new cs555.dfs.wireformats.Chunk(fileName, sequence),
-            bytes, Collections.emptyList());
-        tcpSender.send(storeChunk.getBytes());
+        if (corruptSlices.isEmpty()) {
+            // the entire chunk needs to be replaced
+            StoreChunk storeChunk = new StoreChunk(server.getServerAddress(),
+                tcpSender.getLocalSocketAddress(),
+                new cs555.dfs.wireformats.Chunk(fileName, sequence, chunk.getVersion(), bytes.length),
+                bytes, Collections.emptyList());
+            Utils.debug("sending: " + storeChunk);
+            tcpSender.send(storeChunk.getBytes());
+        }
+        else {
+            List<byte[]> slicedBytes = FileChunkifier.sliceData(bytes);
+            for (Integer corruptSlice : corruptSlices) {
+                StoreSlice storeSlice = new StoreSlice(server.getServerAddress(),
+                    tcpSender.getLocalSocketAddress(),
+                    new cs555.dfs.wireformats.Chunk(fileName, sequence, chunk.getVersion(), chunk.getSize()),
+                    corruptSlice,
+                    (corruptSlice > slicedBytes.size() - 1) ? new byte[0] : slicedBytes.get(corruptSlice));
+                Utils.debug("sending: " + storeSlice);
+                tcpSender.send(storeSlice.getBytes());
+            }
+        }
+    }
+
+    public void handleStoreSlice(StoreSlice storeSlice) {
+        String fileName = storeSlice.getFileName();
+        int sequence = storeSlice.getSequence();
+        int slice = storeSlice.getSlice();
+        int chunkSize = storeSlice.getSize();
+        byte[] sliceFileData = storeSlice.getFileData();
+
+        Chunk chunk = getChunk(fileName, sequence);
+        byte[] chunkBytes = chunk.readChunk();
+
+        List<byte[]> slicedBytes = FileChunkifier.sliceData(chunkBytes);
+        if (sliceFileData.length > 0)
+            slicedBytes.set(slice, sliceFileData);
+
+        byte[] fileData = FileChunkifier.convertByteArrayListToByteArray(slicedBytes);
+        if (fileData.length > chunkSize)
+            fileData = FileChunkifier.truncateBytes(fileData, chunkSize);
+
+        chunk.writeChunk(fileData);
+
+        Utils.info("Stored slice " + chunk.getFileName() + " " + chunk.getSequence() + "(" + slice + ")");
     }
 }

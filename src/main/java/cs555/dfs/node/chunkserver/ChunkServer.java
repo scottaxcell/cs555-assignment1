@@ -79,6 +79,9 @@ public class ChunkServer implements Node {
             case Protocol.STORE_CHUNK:
                 handleStoreChunk(message);
                 break;
+            case Protocol.STORE_SLICE:
+                handleStoreSlice(message);
+                break;
             case Protocol.RETRIEVE_CHUNK_REQUEST:
                 handleRetrieveChunkRequest(message);
                 break;
@@ -103,7 +106,6 @@ public class ChunkServer implements Node {
 
     private void handleAliveHeartbeat(Message message) {
         AliveHeartbeat heartbeat = (AliveHeartbeat) message;
-        Utils.debug("received: " + heartbeat);
     }
 
     private void handleReplicateChunk(Message message) {
@@ -122,6 +124,12 @@ public class ChunkServer implements Node {
         StoreShard storeShard = (StoreShard) message;
         Utils.debug("received: " + storeShard);
         chunkStorage.handleStoreShard(storeShard);
+    }
+
+    private void handleStoreSlice(Message message) {
+        StoreSlice storeSlice = (StoreSlice) message;
+        Utils.debug("received: " + storeSlice);
+        chunkStorage.handleStoreSlice(storeSlice);
     }
 
     private void handleRetrieveChunkRequest(Message message) {
@@ -144,7 +152,6 @@ public class ChunkServer implements Node {
     @Override
     public void registerNewTcpConnection(TcpConnection tcpConnection) {
         connections.put(tcpConnection.getRemoteSocketAddress(), tcpConnection);
-        Utils.debug("registering tcp connection: " + tcpConnection.getRemoteSocketAddress());
     }
 
     @Override
