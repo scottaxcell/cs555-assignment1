@@ -529,13 +529,13 @@ public class Controller implements Node {
                         deadServers.add(lcs);
                     }
                 }
-            }
 
-            for (LiveChunkServer deadServer : deadServers) {
-                Utils.info("Chunk server @ " + deadServer.getServerAddress() + " died");
-                liveChunkServers.remove(deadServer);
-                connections.remove(deadServer.getTcpConnection().getRemoteSocketAddress());
-                processDeadChunkServer(deadServer);
+                for (LiveChunkServer deadServer : deadServers) {
+                    Utils.info("Chunk server @ " + deadServer.getServerAddress() + " died");
+                    liveChunkServers.remove(deadServer);
+                    connections.remove(deadServer.getTcpConnection().getRemoteSocketAddress());
+                    processDeadChunkServer(deadServer);
+                }
             }
         }
     }

@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ChunkServer implements Node {
-    private static final long MINOR_HEARTBEAT_DELAY = 10000; // todo 30 * 1000; // 30 seconds
+    private static final long MINOR_HEARTBEAT_DELAY = 30 * 1000; // 30 seconds
     private final ChunkStorage chunkStorage;
     private final TcpServer tcpServer;
     private final Map<String, TcpConnection> connections = new ConcurrentHashMap<>(); // key = remote socket address
