@@ -1,6 +1,32 @@
 # CS 555: Distributed Systems -- Assignment 1
 Building a distributed, replicated, and fault tolerant path system
 
+## Build
+`$ gradle assemble`
+## Run
+
+### Scripts
+In the first terminal, launch the Controller.
+
+`$ ./controller.sh`
+
+In the second terminal, launch the chunk servers and client.
+
+`$ ./chunk_servers_and_client.sh`
+
+***Note** This script assumes that the Controller has been launched on `tokyo.cs.colostate.edu:50321`.*
+
+
+### Manual
+Controller
+`$ java -cp build/classes/java/main cs555.dfs.node.controller.Controller 50321`
+
+Client
+`$ java -cp build/classes/java/main:lib/* cs555.dfs.node.client.Client <controller-host> <controller-port>`
+
+Chunk Server
+`$ `
+
 ## TODO
 ### Miscellaneous
 * shards of the same chunk are being stored on the same server
@@ -10,6 +36,7 @@ Building a distributed, replicated, and fault tolerant path system
 * ensure all classes are thread safe
 * choose random server based on disk space percentage
 * try to reproduce stack, kill chunk server with shards
+* verify storechunk is being sent and handle correctly, does it need to when were doing slice store?
 ```
 Exception in thread "Thread-170" java.lang.ArrayIndexOutOfBoundsException: 8
         at cs555.dfs.util.ErasureEncoderDecoder.decode(ErasureEncoderDecoder.java:87)
