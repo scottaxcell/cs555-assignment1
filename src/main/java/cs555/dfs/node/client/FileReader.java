@@ -121,12 +121,12 @@ class FileReader {
             for (Map.Entry<Integer, List<ShardData>> entry : sequenceToShardData.entrySet()) {
                 Integer sequence = entry.getKey();
                 List<ShardData> shardDatas = entry.getValue();
-                List<byte[]> chunkShards = shardDatas.stream()
-                    .sorted(Comparator.comparingInt(ShardData::getFragment))
-                    .map(ShardData::getData)
-                    .collect(Collectors.toList());
 
-                byte[] decoded = ErasureEncoderDecoder.decode(chunkShards.toArray(new byte[chunkShards.size()][]));
+                byte[][] encoded = new byte[ErasureEncoderDecoder.TOTAL_SHARDS][];
+                for (ShardData shardData : shardDatas)
+                    encoded[shardData.fragment] = shardData.getData();
+
+                byte[] decoded = ErasureEncoderDecoder.decode(encoded);
                 ChunkData chunkData = new ChunkData(fileName, sequence, decoded);
                 chunkDatas.add(chunkData);
             }
